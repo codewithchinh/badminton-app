@@ -6,6 +6,7 @@ import { MatchDetailModal } from './components/MatchDetailModal';
 import { CreateMatchModal } from './components/CreateMatchModal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { ProfileModal } from './components/ProfileModal';
+import { AuthModal } from './components/AuthModal';
 import { supabase, toMatchPost, toDbRow, type DbMatchRow } from './supabase';
 import {
   Search,
@@ -18,18 +19,14 @@ import {
   Filter,
   CheckCircle2,
   Wifi,
+  LogIn,
+  LogOut,
 } from 'lucide-react';
 
 export default function App() {
-  // Load user from localStorage or fallback
-  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
-    try {
-      const saved = localStorage.getItem('badminton_user');
-      return saved ? JSON.parse(saved) : INITIAL_USER;
-    } catch {
-      return INITIAL_USER;
-    }
-  });
+  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USER);
+  const [session, setSession] = useState<any>(null);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   const [matches, setMatches] = useState<MatchPost[]>(MOCK_MATCHES);
   const [selectedMatch, setSelectedMatch] = useState<MatchPost | null>(null);
@@ -55,14 +52,51 @@ export default function App() {
   const dates = ['Tất cả', 'Hôm nay', 'Ngày mai', 'Chủ Nhật'];
   const levels = ['Tất cả', 'Hợp trình của tôi', 'Newbie', 'Yếu', 'Trung Bình', 'Khá (Bán chuyên)'];
 
-  // Save user profile to localStorage
+  // Handle User Logged In
+  const handleUserLoggedIn = (user: any) => {
+    const meta = user.user_metadata || {};
+    const savedLevel = localStorage.getItem(`badminton_level_${user.id}`);
+    const savedPhone = localStorage.getItem(`badminton_phone_${user.id}`);
+
+    const updatedProfile: UserProfile = {
+      id: user.id,
+      name: meta.full_name || meta.name || user.email?.split('@')[0] || 'Người chơi',
+      phone: savedPhone || '',
+      avatar:
+        meta.avatar_url ||
+        meta.picture ||
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      experienceYears: '1 năm',
+      level: (savedLevel as any) || 'TB-',
+      hasPlayedOtherCourts: true,
+      isOnboarded: !!savedLevel,
+      joinedMatchIds: [],
+    };
+
+    setCurrentUser(updatedProfile);
+
+    // If new user who hasn't completed onboarding, prompt them
+    if (!savedLevel) {
+      setIsOnboardingOpen(true);
+    }
+  };
+
+  // Save user profile from Onboarding
   const handleSaveUser = (updated: UserProfile) => {
     setCurrentUser(updated);
     try {
-      localStorage.setItem('badminton_user', JSON.stringify(updated));
+      localStorage.setItem(`badminton_level_${updated.id}`, updated.level);
+      localStorage.setItem(`badminton_phone_${updated.id}`, updated.phone);
     } catch (e) {
       console.error(e);
     }
+  };
+
+  // Log Out
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(INITIAL_USER);
+    setSession(null);
   };
 
   // Seed mock matches to Supabase if table empty
@@ -74,6 +108,29 @@ export default function App() {
       console.warn('Could not seed matches:', e);
     }
   };
+
+  // Check auth session on load
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        handleUserLoggedIn(session.user);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session?.user) {
+        handleUserLoggedIn(session.user);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Fetch matches from Supabase & Listen to Realtime changes
   useEffect(() => {
@@ -109,7 +166,6 @@ export default function App() {
 
     fetchMatches();
 
-    // Subscribe to Realtime postgres changes
     const channel = supabase
       .channel('matches_realtime_web')
       .on(
@@ -141,8 +197,13 @@ export default function App() {
     };
   }, []);
 
-  // Handle Instant Join / Leave (Syncs with Supabase)
+  // Handle Instant Join / Leave (Requires login)
   const handleToggleJoin = async (matchId: string) => {
+    if (!session) {
+      setIsAuthOpen(true);
+      return;
+    }
+
     const targetMatch = matches.find((m) => m.id === matchId);
     if (!targetMatch) return;
 
@@ -169,12 +230,10 @@ export default function App() {
       ];
     }
 
-    // Optimistic UI update
     const updatedMatch = { ...targetMatch, joinedPlayers: updatedPlayers };
     setMatches((prev) => prev.map((m) => (m.id === matchId ? updatedMatch : m)));
     if (selectedMatch?.id === matchId) setSelectedMatch(updatedMatch);
 
-    // Sync to Supabase
     try {
       await supabase
         .from('matches')
@@ -208,8 +267,13 @@ export default function App() {
     }
   };
 
-  // Create match (Syncs to Supabase)
+  // Create match (Requires login)
   const handleCreateMatch = async (newMatch: MatchPost) => {
+    if (!session) {
+      setIsAuthOpen(true);
+      return;
+    }
+
     setMatches((prev) => [newMatch, ...prev]);
     setSelectedMatch(newMatch);
     setIsDetailOpen(true);
@@ -241,9 +305,7 @@ export default function App() {
         if (m.joinedPlayers.length >= m.totalSlots) return false;
       }
 
-      if (selectedLevel === 'Hợp trình của tôi') {
-        // Simple match with current user level
-      } else if (selectedLevel !== 'Tất cả') {
+      if (selectedLevel !== 'Tất cả') {
         const matchesLevel =
           m.minLevel.includes(selectedLevel) ||
           m.maxLevel.includes(selectedLevel) ||
@@ -309,33 +371,61 @@ export default function App() {
             <div className="flex items-center gap-2.5 sm:gap-3">
               <button
                 type="button"
-                onClick={() => setIsCreateOpen(true)}
-                className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
+                onClick={() => {
+                  if (!session) {
+                    setIsAuthOpen(true);
+                  } else {
+                    setIsCreateOpen(true);
+                  }
+                }}
+                className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4 stroke-[2.5]" />
                 Host Đăng Kèo Mới
               </button>
 
-              {/* User Profile Pill */}
-              <button
-                type="button"
-                onClick={() => setIsProfileOpen(true)}
-                className="flex items-center gap-2.5 p-1 sm:p-1.5 sm:pl-3 rounded-full bg-slate-100 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 transition-all cursor-pointer"
-              >
-                <div className="text-right hidden sm:block">
-                  <div className="text-xs font-bold text-slate-800 leading-tight">
-                    {currentUser.name}
-                  </div>
-                  <div className="text-[10px] font-extrabold text-emerald-700 uppercase">
-                    Trình: {currentUser.level}
-                  </div>
+              {/* Login or User Profile */}
+              {session ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsProfileOpen(true)}
+                    className="flex items-center gap-2.5 p-1 sm:p-1.5 sm:pl-3 rounded-full bg-slate-100 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 transition-all cursor-pointer"
+                  >
+                    <div className="text-right hidden sm:block">
+                      <div className="text-xs font-bold text-slate-800 leading-tight">
+                        {currentUser.name}
+                      </div>
+                      <div className="text-[10px] font-extrabold text-emerald-700 uppercase">
+                        Trình: {currentUser.level}
+                      </div>
+                    </div>
+                    <img
+                      src={currentUser.avatar}
+                      alt={currentUser.name}
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-slate-300 shadow-2xs"
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    title="Đăng xuất"
+                    className="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
                 </div>
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-slate-300 shadow-2xs"
-                />
-              </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsAuthOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-300 hover:border-emerald-500 text-slate-800 font-bold text-xs sm:text-sm shadow-2xs hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4 text-emerald-600" />
+                  <span>Đăng Nhập</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -412,7 +502,7 @@ export default function App() {
                   setOnlyAvailableSlots(false);
                   setSearchQuery('');
                 }}
-                className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700"
+                className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer"
               >
                 Đặt lại
               </button>
@@ -532,7 +622,13 @@ export default function App() {
               {/* View switch button on mobile */}
               <button
                 type="button"
-                onClick={() => setIsCreateOpen(true)}
+                onClick={() => {
+                  if (!session) {
+                    setIsAuthOpen(true);
+                  } else {
+                    setIsCreateOpen(true);
+                  }
+                }}
                 className="sm:hidden w-full py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5"
               >
                 <Plus className="w-4 h-4" /> Đăng Kèo Mới
@@ -557,14 +653,20 @@ export default function App() {
                       setOnlyAvailableSlots(false);
                       setSearchQuery('');
                     }}
-                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700"
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 cursor-pointer"
                   >
                     Xóa bộ lọc
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsCreateOpen(true)}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                    onClick={() => {
+                      if (!session) {
+                        setIsAuthOpen(true);
+                      } else {
+                        setIsCreateOpen(true);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
                   >
                     + Đăng kèo ngay
                   </button>
@@ -623,7 +725,13 @@ export default function App() {
 
         <button
           type="button"
-          onClick={() => setIsCreateOpen(true)}
+          onClick={() => {
+            if (!session) {
+              setIsAuthOpen(true);
+            } else {
+              setIsCreateOpen(true);
+            }
+          }}
           className="flex flex-col items-center -mt-6 group"
         >
           <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-600/30 active:scale-95 transition-all">
@@ -645,15 +753,27 @@ export default function App() {
 
         <button
           type="button"
-          onClick={() => setIsProfileOpen(true)}
+          onClick={() => {
+            if (!session) {
+              setIsAuthOpen(true);
+            } else {
+              setIsProfileOpen(true);
+            }
+          }}
           className="flex flex-col items-center gap-1 text-slate-400"
         >
           <User className="w-5 h-5" />
-          <span className="text-[10px]">Cá nhân</span>
+          <span className="text-[10px]">{session ? 'Cá nhân' : 'Đăng nhập'}</span>
         </button>
       </nav>
 
       {/* ================= MODALS ================= */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onSuccess={() => setIsAuthOpen(false)}
+      />
+
       <MatchDetailModal
         match={selectedMatch}
         currentUser={currentUser}
