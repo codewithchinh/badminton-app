@@ -21,12 +21,14 @@ import {
   Wifi,
   LogIn,
   LogOut,
+  AlertTriangle,
 } from 'lucide-react';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USER);
   const [session, setSession] = useState<any>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const [matches, setMatches] = useState<MatchPost[]>(MOCK_MATCHES);
   const [selectedMatch, setSelectedMatch] = useState<MatchPost | null>(null);
@@ -109,15 +111,43 @@ export default function App() {
     }
   };
 
-  // Check auth session on load
+  // Check auth session on load & handle OAuth code exchange
   useEffect(() => {
+    // 1. Check for errors in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const err = urlParams.get('error_description') || hashParams.get('error_description');
+    if (err) {
+      setAuthError(decodeURIComponent(err.replace(/\+/g, ' ')));
+    }
+
+    // 2. Check for PKCE authorization code in URL
+    const code = urlParams.get('code');
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (error) {
+          console.error('PKCE exchange error:', error);
+          setAuthError(error.message);
+        } else if (data.session?.user) {
+          setSession(data.session);
+          handleUserLoggedIn(data.session.user);
+          // Clean the code from URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      });
+    }
+
+    // 3. Regular session check
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        handleUserLoggedIn(session.user);
+      if (session) {
+        setSession(session);
+        if (session.user) {
+          handleUserLoggedIn(session.user);
+        }
       }
     });
 
+    // 4. Listen to Auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -327,6 +357,23 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-white">
+      {/* Auth Error Banner if present */}
+      {authError && (
+        <div className="bg-rose-600 text-white px-4 py-2.5 text-xs sm:text-sm font-semibold flex items-center justify-between">
+          <div className="flex items-center gap-2 max-w-7xl mx-auto w-full">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-yellow-300" />
+            <span>Thông báo đăng nhập: {authError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAuthError(null)}
+            className="text-white hover:text-slate-200 text-xs font-bold underline ml-2"
+          >
+            Đóng
+          </button>
+        </div>
+      )}
+
       {/* ================= DESKTOP & MOBILE RESPONSIVE TOPBAR ================= */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -411,7 +458,7 @@ export default function App() {
                     type="button"
                     onClick={handleSignOut}
                     title="Đăng xuất"
-                    className="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                    className="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
                   </button>
