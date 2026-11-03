@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { MatchPost, UserProfile } from './types';
 import { INITIAL_USER, MOCK_MATCHES } from './mockData';
 import { MatchCard } from './components/MatchCard';
@@ -6,6 +6,7 @@ import { MatchDetailModal } from './components/MatchDetailModal';
 import { CreateMatchModal } from './components/CreateMatchModal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { ProfileModal } from './components/ProfileModal';
+import { supabase, toMatchPost, toDbRow, type DbMatchRow } from './supabase';
 import {
   Search,
   Plus,
@@ -16,12 +17,23 @@ import {
   Zap,
   Smartphone,
   Monitor,
+  Wifi,
 } from 'lucide-react';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USER);
+  // Load user from localStorage or fallback
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
+    try {
+      const saved = localStorage.getItem('badminton_user');
+      return saved ? JSON.parse(saved) : INITIAL_USER;
+    } catch {
+      return INITIAL_USER;
+    }
+  });
+
   const [matches, setMatches] = useState<MatchPost[]>(MOCK_MATCHES);
   const [selectedMatch, setSelectedMatch] = useState<MatchPost | null>(null);
+  const [isConnectedToDb, setIsConnectedToDb] = useState(false);
 
   // Modals state
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -29,7 +41,7 @@ export default function App() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // View mode: smartphone container or full screen
+  // View mode
   const [isPhoneFrame, setIsPhoneFrame] = useState(true);
 
   // Active Bottom Tab: 'feed' | 'my-matches' | 'profile'
@@ -44,85 +56,191 @@ export default function App() {
   const districts = ['Tất cả', 'Quận 10', 'Tân Bình', 'Gò Vấp', 'Bình Thạnh'];
   const dates = ['Tất cả', 'Hôm nay', 'Ngày mai'];
 
-  // Handle Instant Join / Leave
-  const handleToggleJoin = (matchId: string) => {
-    setMatches((prev) =>
-      prev.map((m) => {
-        if (m.id !== matchId) return m;
-        const alreadyJoined = m.joinedPlayers.some((p) => p.userId === currentUser.id);
+  // Save user profile to localStorage
+  const handleSaveUser = (updated: UserProfile) => {
+    setCurrentUser(updated);
+    try {
+      localStorage.setItem('badminton_user', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
-        if (alreadyJoined) {
-          // Leave
-          const updatedPlayers = m.joinedPlayers.filter((p) => p.userId !== currentUser.id);
-          const updatedMatch = { ...m, joinedPlayers: updatedPlayers };
-          if (selectedMatch?.id === matchId) setSelectedMatch(updatedMatch);
-          return updatedMatch;
-        } else {
-          // Join immediately
-          if (m.joinedPlayers.length >= m.totalSlots) {
-            alert('Kèo này vừa đủ người rồi!');
-            return m;
+  // Seed mock matches to Supabase if database table is empty
+  const seedMatchesToDb = async () => {
+    try {
+      const dbRows = MOCK_MATCHES.map(toDbRow);
+      await supabase.from('matches').upsert(dbRows);
+    } catch (e) {
+      console.warn('Could not seed matches:', e);
+    }
+  };
+
+  // Fetch matches from Supabase & Listen to Realtime changes
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchMatches = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('matches')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          if (isMounted) {
+            setMatches(data.map((r: any) => toMatchPost(r as DbMatchRow)));
+            setIsConnectedToDb(true);
           }
-          const updatedPlayers = [
-            ...m.joinedPlayers,
-            {
-              userId: currentUser.id,
-              name: currentUser.name,
-              avatar: currentUser.avatar,
-              level: currentUser.level,
-              phone: currentUser.phone,
-              joinedAt: 'Vừa xong',
-            },
-          ];
-          const updatedMatch = { ...m, joinedPlayers: updatedPlayers };
-          if (selectedMatch?.id === matchId) setSelectedMatch(updatedMatch);
-          return updatedMatch;
+        } else if (!error && data && data.length === 0) {
+          // Empty table: seed initial demo matches
+          await seedMatchesToDb();
+          const { data: seeded } = await supabase
+            .from('matches')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (seeded && isMounted) {
+            setMatches(seeded.map((r: any) => toMatchPost(r as DbMatchRow)));
+            setIsConnectedToDb(true);
+          }
         }
-      })
-    );
+      } catch (err) {
+        console.warn('Using local mock data:', err);
+      }
+    };
+
+    fetchMatches();
+
+    // Subscribe to Realtime postgres changes
+    const channel = supabase
+      .channel('matches_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'matches' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newMatch = toMatchPost(payload.new as DbMatchRow);
+            setMatches((prev) => [newMatch, ...prev.filter((m) => m.id !== newMatch.id)]);
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = toMatchPost(payload.new as DbMatchRow);
+            setMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+            setSelectedMatch((curr) => (curr?.id === updated.id ? updated : curr));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = (payload.old as any).id;
+            setMatches((prev) => prev.filter((m) => m.id !== deletedId));
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setIsConnectedToDb(true);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Handle Instant Join / Leave (Syncs with Supabase)
+  const handleToggleJoin = async (matchId: string) => {
+    const targetMatch = matches.find((m) => m.id === matchId);
+    if (!targetMatch) return;
+
+    const alreadyJoined = targetMatch.joinedPlayers.some((p) => p.userId === currentUser.id);
+
+    let updatedPlayers: any[];
+    if (alreadyJoined) {
+      updatedPlayers = targetMatch.joinedPlayers.filter((p) => p.userId !== currentUser.id);
+    } else {
+      if (targetMatch.joinedPlayers.length >= targetMatch.totalSlots) {
+        alert('Kèo này vừa đủ người rồi!');
+        return;
+      }
+      updatedPlayers = [
+        ...targetMatch.joinedPlayers,
+        {
+          userId: currentUser.id,
+          name: currentUser.name,
+          avatar: currentUser.avatar,
+          level: currentUser.level,
+          phone: currentUser.phone,
+          joinedAt: 'Vừa xong',
+        },
+      ];
+    }
+
+    // Optimistic UI update
+    const updatedMatch = { ...targetMatch, joinedPlayers: updatedPlayers };
+    setMatches((prev) => prev.map((m) => (m.id === matchId ? updatedMatch : m)));
+    if (selectedMatch?.id === matchId) setSelectedMatch(updatedMatch);
+
+    // Sync to Supabase
+    try {
+      await supabase
+        .from('matches')
+        .update({ joined_players: updatedPlayers })
+        .eq('id', matchId);
+    } catch (e) {
+      console.error('Failed to sync join to Supabase:', e);
+    }
   };
 
   // Host removes a player
-  const handleRemovePlayer = (matchId: string, playerId: string) => {
+  const handleRemovePlayer = async (matchId: string, playerId: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn hủy slot của người chơi này?')) return;
-    setMatches((prev) =>
-      prev.map((m) => {
-        if (m.id !== matchId) return m;
-        const updatedPlayers = m.joinedPlayers.filter((p) => p.userId !== playerId);
-        const updatedMatch = { ...m, joinedPlayers: updatedPlayers };
-        if (selectedMatch?.id === matchId) setSelectedMatch(updatedMatch);
-        return updatedMatch;
-      })
-    );
+
+    const targetMatch = matches.find((m) => m.id === matchId);
+    if (!targetMatch) return;
+
+    const updatedPlayers = targetMatch.joinedPlayers.filter((p) => p.userId !== playerId);
+    const updatedMatch = { ...targetMatch, joinedPlayers: updatedPlayers };
+
+    setMatches((prev) => prev.map((m) => (m.id === matchId ? updatedMatch : m)));
+    if (selectedMatch?.id === matchId) setSelectedMatch(updatedMatch);
+
+    try {
+      await supabase
+        .from('matches')
+        .update({ joined_players: updatedPlayers })
+        .eq('id', matchId);
+    } catch (e) {
+      console.error('Failed to sync remove to Supabase:', e);
+    }
   };
 
-  // Create match
-  const handleCreateMatch = (newMatch: MatchPost) => {
+  // Create match (Syncs to Supabase)
+  const handleCreateMatch = async (newMatch: MatchPost) => {
+    // Optimistic update
     setMatches((prev) => [newMatch, ...prev]);
     setSelectedMatch(newMatch);
     setIsDetailOpen(true);
+
+    // Sync to Supabase
+    try {
+      await supabase.from('matches').insert(toDbRow(newMatch));
+    } catch (e) {
+      console.error('Failed to create match on Supabase:', e);
+    }
   };
 
   // Filtered matches
   const filteredMatches = useMemo(() => {
     return matches.filter((m) => {
-      // Tab filter
       if (activeTab === 'my-matches') {
         const isJoined = m.joinedPlayers.some((p) => p.userId === currentUser.id);
         if (!isJoined) return false;
       }
 
-      // District
       if (selectedDistrict !== 'Tất cả' && m.district !== selectedDistrict) {
         return false;
       }
 
-      // Date
       if (selectedDate !== 'Tất cả' && !m.date.includes(selectedDate)) {
         return false;
       }
 
-      // Search text
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchTitle = m.title.toLowerCase().includes(q);
@@ -141,7 +259,12 @@ export default function App() {
       <div className="hidden sm:flex items-center justify-between w-full max-w-md mb-3 text-xs text-slate-400">
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span className="font-semibold text-slate-200">Badminton Hub Vietnam (MVP)</span>
+          <span className="font-semibold text-slate-200">Badminton Hub VN</span>
+          {isConnectedToDb && (
+            <span className="flex items-center gap-1 text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-800">
+              <Wifi className="w-3 h-3" /> Supabase Realtime
+            </span>
+          )}
         </div>
         <button
           type="button"
@@ -153,7 +276,7 @@ export default function App() {
         </button>
       </div>
 
-      {/* Main Container: Mobile phone mockup or responsive web */}
+      {/* Main Container */}
       <div
         className={`w-full bg-slate-100 flex flex-col relative overflow-hidden transition-all duration-300 ${
           isPhoneFrame
@@ -179,7 +302,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Profile badge / Calibrate level button */}
+            {/* Profile badge */}
             <button
               type="button"
               onClick={() => setIsProfileOpen(true)}
@@ -262,7 +385,7 @@ export default function App() {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto p-3.5 space-y-3 pb-24">
-          {/* Active Banner for Drop-in Matching */}
+          {/* Active Banner */}
           {activeTab === 'feed' && (
             <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-sm flex items-center justify-between">
               <div>
@@ -270,7 +393,7 @@ export default function App() {
                   <Zap className="w-3.5 h-3.5 fill-yellow-300 text-yellow-300" />
                   Tuyển vãng lai tức thì
                 </div>
-                <div className="text-sm font-extrabold mt-0.5">Bấm là vào slot - Không trôi bài</div>
+                <div className="text-sm font-extrabold mt-0.5">Bấm là vào slot - Lưu trữ Cloud</div>
               </div>
               <button
                 type="button"
@@ -289,7 +412,9 @@ export default function App() {
                 ? `Kèo đang mở tuyển (${filteredMatches.length})`
                 : `Kèo bạn đã tham gia (${filteredMatches.length})`}
             </span>
-            <span className="text-[11px] text-slate-500">Cập nhật liên tục</span>
+            <span className="text-[11px] text-slate-500">
+              {isConnectedToDb ? '🟢 Trực tuyến Realtime' : '🟡 Cập nhật liên tục'}
+            </span>
           </div>
 
           {/* Matches List */}
@@ -298,7 +423,7 @@ export default function App() {
               <div className="text-3xl mb-2">🏸</div>
               <div className="text-sm font-bold text-slate-700">Chưa tìm thấy kèo phù hợp</div>
               <p className="text-xs text-slate-600 mt-1">
-                Hãy thử chọn "Tất cả quận" hoặc đổi từ khóa tìm kiếm.
+                Hãy thử chọn "Tất cả quận" hoặc đăng kèo mới nhé!
               </p>
               <button
                 type="button"
@@ -396,7 +521,7 @@ export default function App() {
           isOpen={isOnboardingOpen}
           user={currentUser}
           onSave={(updated) => {
-            setCurrentUser(updated);
+            handleSaveUser(updated);
             setIsOnboardingOpen(false);
           }}
           onClose={() => setIsOnboardingOpen(false)}
