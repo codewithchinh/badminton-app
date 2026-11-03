@@ -76,17 +76,30 @@ export default function App() {
   };
 
   // Handle User Logged In
-  const handleUserLoggedIn = (user: any) => {
+  const handleUserLoggedIn = async (user: any) => {
     const meta = user.user_metadata || {};
     const identityData = user.identities?.[0]?.identity_data || {};
+
     const savedName = localStorage.getItem(`badminton_name_${user.id}`);
     const savedLevel = localStorage.getItem(`badminton_level_${user.id}`);
     const savedPhone = localStorage.getItem(`badminton_phone_${user.id}`);
+    const savedExp = localStorage.getItem(`badminton_exp_${user.id}`);
+    const savedPlayed = localStorage.getItem(`badminton_played_${user.id}`);
+    const savedOnboarded = localStorage.getItem(`badminton_onboarded_${user.id}`);
+
+    // Check cloud first, fallback to local storage
+    const userLevel = meta.level || savedLevel || null;
+    const userPhone = meta.phone || savedPhone || '';
+    const userExp = meta.experience_years || savedExp || '1 năm';
+    const userPlayed = typeof meta.has_played_other_courts === 'boolean'
+      ? meta.has_played_other_courts
+      : (savedPlayed === 'true');
+    const isOnboarded = !!(meta.is_onboarded || meta.level || savedOnboarded === 'true' || savedLevel);
 
     // Auto-detect real name from Google OAuth metadata or email
     const realName =
-      savedName ||
       meta.full_name ||
+      savedName ||
       meta.name ||
       identityData.full_name ||
       identityData.name ||
@@ -97,37 +110,74 @@ export default function App() {
     const updatedProfile: UserProfile = {
       id: user.id,
       name: realName,
-      phone: savedPhone || '',
+      phone: userPhone,
       avatar:
         meta.avatar_url ||
         meta.picture ||
         identityData.avatar_url ||
         identityData.picture ||
         'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-      experienceYears: '1 năm',
-      level: (savedLevel as any) || 'TB-',
-      hasPlayedOtherCourts: true,
-      isOnboarded: !!savedLevel,
+      experienceYears: userExp,
+      level: (userLevel as any) || 'TB-',
+      hasPlayedOtherCourts: userPlayed,
+      isOnboarded: isOnboarded,
       joinedMatchIds: [],
     };
 
     setCurrentUser(updatedProfile);
 
-    // If new user who hasn't completed onboarding, prompt them
-    if (!savedLevel) {
+    // If local had data but cloud metadata didn't yet, auto-sync to cloud in background
+    if (!meta.level && savedLevel) {
+      supabase.auth.updateUser({
+        data: {
+          full_name: realName,
+          phone: userPhone,
+          level: savedLevel,
+          experience_years: userExp,
+          has_played_other_courts: userPlayed,
+          is_onboarded: true,
+        },
+      }).catch(console.warn);
+    }
+
+    // Only prompt onboarding if user has NEVER completed it on any device!
+    if (!isOnboarded) {
       setIsOnboardingOpen(true);
+    } else {
+      setIsOnboardingOpen(false);
     }
   };
 
-  // Save user profile from Onboarding
-  const handleSaveUser = (updated: UserProfile) => {
+  // Save user profile from Onboarding & sync to cloud
+  const handleSaveUser = async (updated: UserProfile) => {
     setCurrentUser(updated);
+
+    // 1. Save locally for instant offline performance
     try {
       localStorage.setItem(`badminton_name_${updated.id}`, updated.name);
       localStorage.setItem(`badminton_level_${updated.id}`, updated.level);
       localStorage.setItem(`badminton_phone_${updated.id}`, updated.phone);
+      localStorage.setItem(`badminton_exp_${updated.id}`, updated.experienceYears);
+      localStorage.setItem(`badminton_played_${updated.id}`, String(updated.hasPlayedOtherCourts));
+      localStorage.setItem(`badminton_onboarded_${updated.id}`, 'true');
     } catch (e) {
       console.error(e);
+    }
+
+    // 2. Persist to Supabase Cloud User Metadata (syncs across Phone, Laptop, and all devices)
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          full_name: updated.name,
+          phone: updated.phone,
+          level: updated.level,
+          experience_years: updated.experienceYears,
+          has_played_other_courts: updated.hasPlayedOtherCourts,
+          is_onboarded: true,
+        },
+      });
+    } catch (err) {
+      console.warn('Could not sync profile to cloud metadata:', err);
     }
   };
 
