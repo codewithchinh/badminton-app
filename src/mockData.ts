@@ -1,15 +1,15 @@
 import type { MatchPost, UserProfile } from './types';
 
 export const INITIAL_USER: UserProfile = {
-  id: 'user-current',
-  name: 'Nguyễn Văn Minh',
-  phone: '0903123456',
+  id: 'guest',
+  name: '',
+  phone: '',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
   experienceYears: '1 năm',
   level: 'TB-',
   hasPlayedOtherCourts: true,
-  isOnboarded: true,
-  joinedMatchIds: ['match-1'],
+  isOnboarded: false,
+  joinedMatchIds: [],
 };
 
 export const MOCK_MATCHES: MatchPost[] = [
@@ -76,11 +76,11 @@ export const MOCK_MATCHES: MatchPost[] = [
         joinedAt: '11:45',
       },
       {
-        userId: 'user-current',
-        name: 'Nguyễn Văn Minh (Bạn)',
+        userId: 'p7',
+        name: 'Văn Minh',
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
         level: 'TB-',
-        phone: '0903123456',
+        phone: '0903889911',
         joinedAt: '12:00',
       },
     ],

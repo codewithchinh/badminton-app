@@ -57,16 +57,31 @@ export default function App() {
   // Handle User Logged In
   const handleUserLoggedIn = (user: any) => {
     const meta = user.user_metadata || {};
+    const identityData = user.identities?.[0]?.identity_data || {};
+    const savedName = localStorage.getItem(`badminton_name_${user.id}`);
     const savedLevel = localStorage.getItem(`badminton_level_${user.id}`);
     const savedPhone = localStorage.getItem(`badminton_phone_${user.id}`);
 
+    // Auto-detect real name from Google OAuth metadata or email
+    const realName =
+      savedName ||
+      meta.full_name ||
+      meta.name ||
+      identityData.full_name ||
+      identityData.name ||
+      meta.preferred_username ||
+      (user.email ? user.email.split('@')[0] : '') ||
+      'Người chơi';
+
     const updatedProfile: UserProfile = {
       id: user.id,
-      name: meta.full_name || meta.name || user.email?.split('@')[0] || 'Người chơi',
+      name: realName,
       phone: savedPhone || '',
       avatar:
         meta.avatar_url ||
         meta.picture ||
+        identityData.avatar_url ||
+        identityData.picture ||
         'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
       experienceYears: '1 năm',
       level: (savedLevel as any) || 'TB-',
@@ -87,6 +102,7 @@ export default function App() {
   const handleSaveUser = (updated: UserProfile) => {
     setCurrentUser(updated);
     try {
+      localStorage.setItem(`badminton_name_${updated.id}`, updated.name);
       localStorage.setItem(`badminton_level_${updated.id}`, updated.level);
       localStorage.setItem(`badminton_phone_${updated.id}`, updated.phone);
     } catch (e) {

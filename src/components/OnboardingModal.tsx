@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { SkillLevel, UserProfile } from '../types';
 import { Award, CheckCircle2, ChevronRight, Sparkles, User } from 'lucide-react';
 
@@ -15,11 +15,32 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   onSave,
 }) => {
   const [step, setStep] = useState(1);
-  const [name, setName] = useState(user.name);
-  const [phone, setPhone] = useState(user.phone);
+  const [name, setName] = useState(user.name && user.name !== 'Khách' ? user.name : '');
+  const [phone, setPhone] = useState(user.phone || '');
   const [experience, setExperience] = useState(user.experienceYears || '6 tháng - 1 năm');
   const [level, setLevel] = useState<SkillLevel>(user.level || 'TB Yếu');
-  const [hasPlayedOthers, setHasPlayedOthers] = useState<boolean>(user.hasPlayedOtherCourts);
+  const [hasPlayedOthers, setHasPlayedOthers] = useState<boolean>(user.hasPlayedOtherCourts ?? false);
+
+  // Sync state whenever modal is opened or user prop updates (e.g. from Google login)
+  useEffect(() => {
+    if (isOpen) {
+      if (user.name && user.name !== 'Khách') {
+        setName(user.name);
+      } else {
+        setName('');
+      }
+      setPhone(user.phone || '');
+      if (user.experienceYears) {
+        setExperience(user.experienceYears);
+      }
+      if (user.level) {
+        setLevel(user.level);
+      }
+      if (typeof user.hasPlayedOtherCourts === 'boolean') {
+        setHasPlayedOthers(user.hasPlayedOtherCourts);
+      }
+    }
+  }, [isOpen, user]);
 
   if (!isOpen) return null;
 
@@ -44,10 +65,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   };
 
   const handleFinish = () => {
+    const finalName = name.trim() || user.name || 'Người chơi';
     onSave({
       ...user,
-      name: name.trim() || 'Người chơi mới',
-      phone: phone.trim() || '0901234567',
+      name: finalName,
+      phone: phone.trim(),
       experienceYears: experience,
       level: level,
       hasPlayedOtherCourts: hasPlayedOthers,
@@ -203,9 +225,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="VD: Minh Tuấn"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-emerald-500"
+                    placeholder="VD: Nguyễn Bá Chinh, Dương Đình Trọng..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-emerald-500 font-medium"
                   />
+                  <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1 font-medium">
+                    ✓ Tự động điền theo tài khoản của bạn. Bạn có thể sửa lại nếu muốn.
+                  </p>
                 </div>
 
                 <div>
@@ -216,9 +241,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="VD: 0903123456"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-emerald-500"
+                    placeholder="Nhập số điện thoại để Host liên hệ Zalo..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-emerald-500 font-medium"
                   />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Host sẽ liên hệ qua Zalo số này khi bạn bấm tham gia kèo.
+                  </p>
                 </div>
 
                 <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center gap-3">
