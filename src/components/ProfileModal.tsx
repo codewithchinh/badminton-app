@@ -48,7 +48,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <h2 className="text-lg font-bold">{user.name}</h2>
               <div className="text-xs text-emerald-100 flex items-center gap-1.5 mt-0.5">
                 <Phone className="w-3.5 h-3.5" />
-                Zalo: {user.phone}
+                Zalo: {user.phone || 'Chưa cập nhật'}
               </div>
               <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold text-yellow-300">
                 <Award className="w-3.5 h-3.5" />

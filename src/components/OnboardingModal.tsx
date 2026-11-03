@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { SkillLevel, UserProfile } from '../types';
-import { Award, CheckCircle2, ChevronRight, Sparkles, User } from 'lucide-react';
+import { Award, CheckCircle2, ChevronRight, Sparkles, User, X } from 'lucide-react';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -13,6 +13,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   isOpen,
   user,
   onSave,
+  onClose,
 }) => {
   const [step, setStep] = useState(1);
   const [name, setName] = useState(user.name && user.name !== 'Khách' ? user.name : '');
@@ -82,6 +83,15 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 p-6 text-white text-center relative">
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
           <div className="inline-flex items-center justify-center w-12 h-12 bg-white/15 rounded-2xl mb-3 backdrop-blur-md">
             <Sparkles className="w-6 h-6 text-yellow-300" />
           </div>

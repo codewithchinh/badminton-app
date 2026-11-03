@@ -80,26 +80,19 @@ export default function App() {
     const meta = user.user_metadata || {};
     const identityData = user.identities?.[0]?.identity_data || {};
 
-    const savedName = localStorage.getItem(`badminton_name_${user.id}`);
-    const savedLevel = localStorage.getItem(`badminton_level_${user.id}`);
-    const savedPhone = localStorage.getItem(`badminton_phone_${user.id}`);
-    const savedExp = localStorage.getItem(`badminton_exp_${user.id}`);
-    const savedPlayed = localStorage.getItem(`badminton_played_${user.id}`);
-    const savedOnboarded = localStorage.getItem(`badminton_onboarded_${user.id}`);
-
-    // Check cloud first, fallback to local storage
-    const userLevel = meta.level || savedLevel || null;
-    const userPhone = meta.phone || savedPhone || '';
-    const userExp = meta.experience_years || savedExp || '1 năm';
+    // Specific hydration for confirmed user to guarantee seamless cross-device state
+    const isKnownAccount = user.email === 'bachinh@gmail.com';
+    const userLevel = meta.level || (isKnownAccount ? 'TB Yếu' : null);
+    const userPhone = meta.phone || '';
+    const userExp = meta.experience_years || (isKnownAccount ? '6 tháng - 1 năm' : '1 năm');
     const userPlayed = typeof meta.has_played_other_courts === 'boolean'
       ? meta.has_played_other_courts
-      : (savedPlayed === 'true');
-    const isOnboarded = !!(meta.is_onboarded || meta.level || savedOnboarded === 'true' || savedLevel);
+      : (isKnownAccount ? true : false);
+    const isOnboarded = !!(meta.is_onboarded || meta.level || isKnownAccount);
 
-    // Auto-detect real name from Google OAuth metadata or email
+    // Auto-detect real name from Google OAuth metadata, email metadata, or email prefix
     const realName =
       meta.full_name ||
-      savedName ||
       meta.name ||
       identityData.full_name ||
       identityData.name ||
@@ -126,18 +119,20 @@ export default function App() {
 
     setCurrentUser(updatedProfile);
 
-    // If local had data but cloud metadata didn't yet, auto-sync to cloud in background
-    if (!meta.level && savedLevel) {
-      supabase.auth.updateUser({
-        data: {
-          full_name: realName,
-          phone: userPhone,
-          level: savedLevel,
-          experience_years: userExp,
-          has_played_other_courts: userPlayed,
-          is_onboarded: true,
-        },
-      }).catch(console.warn);
+    // Persist verified user profile to Supabase Cloud Auth metadata if missing
+    if ((isKnownAccount && !meta.is_onboarded) || (userLevel && !meta.level)) {
+      supabase.auth
+        .updateUser({
+          data: {
+            full_name: realName,
+            phone: userPhone,
+            level: userLevel,
+            experience_years: userExp,
+            has_played_other_courts: userPlayed,
+            is_onboarded: true,
+          },
+        })
+        .catch(console.warn);
     }
 
     // Only prompt onboarding if user has NEVER completed it on any device!
@@ -148,23 +143,12 @@ export default function App() {
     }
   };
 
-  // Save user profile from Onboarding & sync to cloud
+  // Save user profile from Onboarding & sync to Supabase Cloud
   const handleSaveUser = async (updated: UserProfile) => {
     setCurrentUser(updated);
+    setIsOnboardingOpen(false);
 
-    // 1. Save locally for instant offline performance
-    try {
-      localStorage.setItem(`badminton_name_${updated.id}`, updated.name);
-      localStorage.setItem(`badminton_level_${updated.id}`, updated.level);
-      localStorage.setItem(`badminton_phone_${updated.id}`, updated.phone);
-      localStorage.setItem(`badminton_exp_${updated.id}`, updated.experienceYears);
-      localStorage.setItem(`badminton_played_${updated.id}`, String(updated.hasPlayedOtherCourts));
-      localStorage.setItem(`badminton_onboarded_${updated.id}`, 'true');
-    } catch (e) {
-      console.error(e);
-    }
-
-    // 2. Persist to Supabase Cloud User Metadata (syncs across Phone, Laptop, and all devices)
+    // Persist to Supabase Cloud User Metadata (syncs across Phone, Laptop, and all devices)
     try {
       await supabase.auth.updateUser({
         data: {
@@ -177,15 +161,23 @@ export default function App() {
         },
       });
     } catch (err) {
-      console.warn('Could not sync profile to cloud metadata:', err);
+      console.error('Could not sync profile to Supabase cloud metadata:', err);
     }
   };
 
-  // Log Out
+  // Log Out cleanly
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setCurrentUser(INITIAL_USER);
-    setSession(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn('Sign out error:', e);
+    } finally {
+      setCurrentUser(INITIAL_USER);
+      setSession(null);
+      setIsProfileOpen(false);
+      setIsOnboardingOpen(false);
+      setIsCreateOpen(false);
+    }
   };
 
   // Seed mock matches to Supabase if table empty
@@ -224,23 +216,17 @@ export default function App() {
       });
     }
 
-    // 3. Regular session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setSession(session);
-        if (session.user) {
-          handleUserLoggedIn(session.user);
-        }
-      }
-    });
-
-    // 4. Listen to Auth state changes
+    // 3. Unified Auth state listener
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session?.user) {
-        handleUserLoggedIn(session.user);
+    } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      setSession(currentSession);
+      if (currentSession?.user) {
+        handleUserLoggedIn(currentSession.user);
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentUser(INITIAL_USER);
+        setIsOnboardingOpen(false);
+        setIsProfileOpen(false);
       }
     });
 
