@@ -7,6 +7,7 @@ import { CreateMatchModal } from './components/CreateMatchModal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { ProfileModal } from './components/ProfileModal';
 import { AuthModal } from './components/AuthModal';
+import { ResetPasswordModal } from './components/ResetPasswordModal';
 import { supabase, toMatchPost, toDbRow, type DbMatchRow } from './supabase';
 import {
   Search,
@@ -41,6 +42,7 @@ export default function App() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
 
   // Active Bottom Tab on mobile: 'feed' | 'my-matches' | 'profile'
   const [activeTab, setActiveTab] = useState<'feed' | 'my-matches' | 'profile'>('feed');
@@ -192,12 +194,16 @@ export default function App() {
 
   // Check auth session on load & handle OAuth code exchange
   useEffect(() => {
-    // 1. Check for errors in URL
+    // 1. Check for errors or recovery hash in URL
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const err = urlParams.get('error_description') || hashParams.get('error_description');
     if (err) {
       setAuthError(decodeURIComponent(err.replace(/\+/g, ' ')));
+    }
+
+    if (window.location.hash.includes('reset-password') || hashParams.get('type') === 'recovery') {
+      setIsResetPasswordOpen(true);
     }
 
     // 2. Check for PKCE authorization code in URL
@@ -221,7 +227,9 @@ export default function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       setSession(currentSession);
-      if (currentSession?.user) {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsResetPasswordOpen(true);
+      } else if (currentSession?.user) {
         handleUserLoggedIn(currentSession.user);
       } else if (event === 'SIGNED_OUT') {
         setCurrentUser(INITIAL_USER);
@@ -1097,6 +1105,14 @@ export default function App() {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         onSuccess={() => setIsAuthOpen(false)}
+      />
+
+      <ResetPasswordModal
+        isOpen={isResetPasswordOpen}
+        onSuccess={() => {
+          setIsResetPasswordOpen(false);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }}
       />
 
       <MatchDetailModal
