@@ -22,6 +22,7 @@ import {
   LogIn,
   LogOut,
   AlertTriangle,
+  X,
 } from 'lucide-react';
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   // Active Bottom Tab on mobile: 'feed' | 'my-matches' | 'profile'
   const [activeTab, setActiveTab] = useState<'feed' | 'my-matches' | 'profile'>('feed');
@@ -53,6 +55,25 @@ export default function App() {
   const districts = ['Tất cả', 'Quận 10', 'Tân Bình', 'Gò Vấp', 'Bình Thạnh', 'Phú Nhuận', 'Quận 7', 'Thủ Đức'];
   const dates = ['Tất cả', 'Hôm nay', 'Ngày mai', 'Chủ Nhật'];
   const levels = ['Tất cả', 'Hợp trình của tôi', 'Newbie', 'Yếu', 'Trung Bình', 'Khá (Bán chuyên)'];
+
+  // Count active filters
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (selectedDistrict !== 'Tất cả') count++;
+    if (selectedLevel !== 'Tất cả') count++;
+    if (selectedDate !== 'Tất cả') count++;
+    if (onlyAvailableSlots) count++;
+    return count;
+  }, [selectedDistrict, selectedLevel, selectedDate, onlyAvailableSlots]);
+
+  // Reset all filters
+  const handleResetFilters = () => {
+    setSelectedDistrict('Tất cả');
+    setSelectedLevel('Tất cả');
+    setSelectedDate('Tất cả');
+    setOnlyAvailableSlots(false);
+    setSearchQuery('');
+  };
 
   // Handle User Logged In
   const handleUserLoggedIn = (user: any) => {
@@ -372,7 +393,7 @@ export default function App() {
   }, [matches, activeTab, selectedDistrict, selectedDate, selectedLevel, onlyAvailableSlots, searchQuery, currentUser]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-white pb-24 sm:pb-0">
       {/* Auth Error Banner if present */}
       {authError && (
         <div className="bg-rose-600 text-white px-4 py-2.5 text-xs sm:text-sm font-semibold flex items-center justify-between">
@@ -508,8 +529,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* ================= HERO BANNER FOR WEBSITE ================= */}
-      <section className="bg-gradient-to-r from-emerald-800 via-teal-900 to-slate-900 text-white py-6 sm:py-10 border-b border-emerald-950/40">
+      {/* ================= HERO BANNER FOR WEBSITE (DESKTOP ONLY) ================= */}
+      <section className="hidden md:block bg-gradient-to-r from-emerald-800 via-teal-900 to-slate-900 text-white py-6 sm:py-10 border-b border-emerald-950/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="max-w-2xl space-y-2">
@@ -547,10 +568,76 @@ export default function App() {
       </section>
 
       {/* ================= MAIN CONTENT (TWO-COLUMN WEB LAYOUT) ================= */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-8">
+        {/* ================= MOBILE QUICK FILTER BAR (HORIZONTAL SCROLL) ================= */}
+        <div className="lg:hidden mb-3">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+            {/* Filter Drawer Button */}
+            <button
+              type="button"
+              onClick={() => setIsMobileFilterOpen(true)}
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border shadow-2xs cursor-pointer ${
+                activeFiltersCount > 0
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-white text-slate-700 border-slate-200 active:bg-slate-100'
+              }`}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>Bộ lọc</span>
+              {activeFiltersCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-white text-emerald-700 text-[10px] font-black flex items-center justify-center">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+
+            {/* Quick Date: Hôm nay */}
+            <button
+              type="button"
+              onClick={() => setSelectedDate(selectedDate === 'Hôm nay' ? 'Tất cả' : 'Hôm nay')}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+                selectedDate === 'Hôm nay'
+                  ? 'bg-teal-600 text-white border-teal-600 font-bold'
+                  : 'bg-white text-slate-700 border-slate-200 active:bg-slate-100'
+              }`}
+            >
+              📅 Hôm nay
+            </button>
+
+            {/* Quick Available Slots */}
+            <button
+              type="button"
+              onClick={() => setOnlyAvailableSlots(!onlyAvailableSlots)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+                onlyAvailableSlots
+                  ? 'bg-emerald-600 text-white border-emerald-600 font-bold'
+                  : 'bg-white text-slate-700 border-slate-200 active:bg-slate-100'
+              }`}
+            >
+              ⚡ Còn slot
+            </button>
+
+            {/* Popular District Pills */}
+            {districts.map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setSelectedDistrict(selectedDistrict === d ? 'Tất cả' : d)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+                  selectedDistrict === d
+                    ? 'bg-emerald-600 text-white border-emerald-600 font-bold'
+                    : 'bg-white text-slate-700 border-slate-200 active:bg-slate-100'
+                }`}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
-          {/* ================= LEFT SIDEBAR: FILTERS ON DESKTOP ================= */}
-          <aside className="lg:col-span-1 space-y-5 bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+          {/* ================= LEFT SIDEBAR: FILTERS ON DESKTOP ONLY ================= */}
+          <aside className="hidden lg:block lg:col-span-1 space-y-5 bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs sticky top-24">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                 <Filter className="w-4 h-4 text-emerald-600" />
@@ -558,13 +645,7 @@ export default function App() {
               </h3>
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedDistrict('Tất cả');
-                  setSelectedLevel('Tất cả');
-                  setSelectedDate('Tất cả');
-                  setOnlyAvailableSlots(false);
-                  setSearchQuery('');
-                }}
+                onClick={handleResetFilters}
                 className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer"
               >
                 Đặt lại
@@ -667,22 +748,22 @@ export default function App() {
           </aside>
 
           {/* ================= RIGHT MAIN AREA: MATCHES GRID ================= */}
-          <div className="lg:col-span-3 space-y-5">
+          <div className="lg:col-span-3 space-y-4 sm:space-y-5">
             {/* Header toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80">
+            <div className="flex items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
               <div>
-                <h3 className="font-extrabold text-slate-900 text-base sm:text-lg flex items-center gap-2">
+                <h3 className="font-extrabold text-slate-900 text-sm sm:text-lg flex items-center gap-2">
                   Danh sách kèo tuyển vãng lai
                   <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
                     {filteredMatches.length} kèo
                   </span>
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
                   Bấm vào thẻ bất kỳ để xem danh sách thành viên hoặc liên hệ Zalo Host
                 </p>
               </div>
 
-              {/* View switch button on mobile */}
+              {/* Host button on desktop */}
               <button
                 type="button"
                 onClick={() => {
@@ -692,7 +773,7 @@ export default function App() {
                     setIsCreateOpen(true);
                   }
                 }}
-                className="sm:hidden w-full py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" /> Đăng Kèo Mới
               </button>
@@ -829,6 +910,151 @@ export default function App() {
           <span className="text-[10px]">{session ? 'Cá nhân' : 'Đăng nhập'}</span>
         </button>
       </nav>
+
+      {/* ================= MOBILE FILTER BOTTOM SHEET ================= */}
+      {isMobileFilterOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs p-0 animate-in fade-in duration-150">
+          <div
+            className="fixed inset-0"
+            onClick={() => setIsMobileFilterOpen(false)}
+          />
+          <div className="relative bg-white w-full max-w-lg rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl z-10 overflow-hidden animate-in slide-in-from-bottom duration-200">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-4 px-5 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                  <Filter className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Bộ lọc tìm kèo vãng lai</h3>
+                  <p className="text-[11px] text-slate-500">Lọc theo quận, giờ chơi & trình độ</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileFilterOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-200/70 hover:bg-slate-300 flex items-center justify-center text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Drawer Content */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {/* Filter by District */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Khu vực (Quận / Huyện)
+                  </label>
+                  {selectedDistrict !== 'Tất cả' && (
+                    <span className="text-[11px] font-bold text-emerald-600">Đang chọn: {selectedDistrict}</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {districts.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setSelectedDistrict(d)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                        selectedDistrict === d
+                          ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Filter by Date */}
+              <div className="pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Thời gian đánh
+                  </label>
+                  {selectedDate !== 'Tất cả' && (
+                    <span className="text-[11px] font-bold text-teal-600">{selectedDate}</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {dates.map((dt) => (
+                    <button
+                      key={dt}
+                      type="button"
+                      onClick={() => setSelectedDate(dt)}
+                      className={`px-3 py-2 rounded-xl text-xs font-medium text-center transition-all ${
+                        selectedDate === dt
+                          ? 'bg-teal-600 text-white font-bold shadow-xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {dt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Filter by Skill Level */}
+              <div className="pt-3 border-t border-slate-100">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
+                  Trình độ yêu cầu
+                </label>
+                <div className="space-y-1">
+                  {levels.map((lvl) => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setSelectedLevel(lvl)}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-between ${
+                        selectedLevel === lvl
+                          ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200'
+                          : 'hover:bg-slate-50 text-slate-600'
+                      }`}
+                    >
+                      <span>{lvl}</span>
+                      {selectedLevel === lvl && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Only Available Slots checkbox */}
+              <div className="pt-3 border-t border-slate-100">
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-slate-700 p-2.5 rounded-xl bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={onlyAvailableSlots}
+                    onChange={(e) => setOnlyAvailableSlots(e.target.checked)}
+                    className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                  />
+                  <span>Chỉ hiện các kèo còn slot trống</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Drawer Actions */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-800 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Đặt lại
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsMobileFilterOpen(false)}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-98 transition-all text-center cursor-pointer"
+              >
+                Xem {filteredMatches.length} kèo phù hợp
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= MODALS ================= */}
       <AuthModal
