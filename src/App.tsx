@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { MatchPost, UserProfile } from './types';
+import type { MatchPost, UserProfile, SkillLevel } from './types';
+import { SKILL_LEVEL_SCORES } from './types';
 import { INITIAL_USER, MOCK_MATCHES } from './mockData';
 import { MatchCard } from './components/MatchCard';
 import { MatchDetailModal } from './components/MatchDetailModal';
@@ -38,11 +39,13 @@ export default function App() {
   const [matches, setMatches] = useState<MatchPost[]>(MOCK_MATCHES);
   const [selectedMatch, setSelectedMatch] = useState<MatchPost | null>(null);
   const [isConnectedToDb, setIsConnectedToDb] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Modals state
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<MatchPost | null>(null);
+  const [cloningMatch, setCloningMatch] = useState<MatchPost | null>(null);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -50,6 +53,18 @@ export default function App() {
 
   // Join confirmation dialog
   const [confirmJoinMatch, setConfirmJoinMatch] = useState<MatchPost | null>(null);
+
+  // Online / Offline monitor
+  useEffect(() => {
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
 
   // Bookmarks state (persisted to localStorage)
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => {
@@ -206,6 +221,7 @@ export default function App() {
       handleOpenAuth();
     } else {
       setEditingMatch(null);
+      setCloningMatch(null);
       setIsCreateOpen(true);
       openModalWithHash('#create', { modal: 'create-match' });
     }
@@ -213,14 +229,23 @@ export default function App() {
 
   const handleEditMatch = (match: MatchPost) => {
     setEditingMatch(match);
+    setCloningMatch(null);
     setIsCreateOpen(true);
     openModalWithHash('#create', { modal: 'edit-match', matchId: match.id });
+  };
+
+  const handleCloneMatch = (match: MatchPost) => {
+    setCloningMatch(match);
+    setEditingMatch(null);
+    setIsCreateOpen(true);
+    openModalWithHash('#create', { modal: 'clone-match', matchId: match.id });
   };
 
   const handleCloseCreateMatch = () => {
     closeModalWithHash('#create', () => {
       setIsCreateOpen(false);
       setEditingMatch(null);
+      setCloningMatch(null);
     });
   };
 
@@ -263,6 +288,18 @@ export default function App() {
   const handleCloseOnboarding = () => {
     closeModalWithHash('#onboarding', () => setIsOnboardingOpen(false));
   };
+
+  // Deep Link auto-open when matches finish loading (Bug 2)
+  useEffect(() => {
+    if (matches.length > 0 && window.location.hash.startsWith('#match-')) {
+      const matchId = window.location.hash.replace('#match-', '');
+      const target = matches.find((m) => m.id === matchId);
+      if (target) {
+        setSelectedMatch(target);
+        setIsDetailOpen(true);
+      }
+    }
+  }, [matches]);
 
   // Listen to browser Back button & popstate events
   useEffect(() => {
@@ -311,10 +348,6 @@ export default function App() {
         setIsOnboardingOpen(false);
       }
     };
-
-    if (window.location.hash) {
-      handlePopState();
-    }
 
     window.addEventListener('popstate', handlePopState);
     return () => {
@@ -593,6 +626,7 @@ export default function App() {
           level: userToJoin.level,
           phone: userToJoin.phone,
           joinedAt: 'Vừa xong',
+          isPaidDeposit: false,
         },
       ];
     }
@@ -625,11 +659,26 @@ export default function App() {
     const alreadyJoined = targetMatch.joinedPlayers.some((p) => p.userId === currentUser.id);
 
     if (alreadyJoined) {
-      // Direct cancel
       executeToggleJoin(matchId);
     } else {
-      // Show confirmation dialog before locking slot
       setConfirmJoinMatch(targetMatch);
+    }
+  };
+
+  // Host toggles player's deposit status (Bug 6)
+  const handleTogglePlayerDeposit = async (matchId: string, playerId: string) => {
+    const target = matches.find((m) => m.id === matchId);
+    if (!target) return;
+    const updatedPlayers = target.joinedPlayers.map((p) =>
+      p.userId === playerId ? { ...p, isPaidDeposit: !p.isPaidDeposit } : p
+    );
+    const updated = { ...target, joinedPlayers: updatedPlayers };
+    setMatches((prev) => prev.map((m) => (m.id === matchId ? updated : m)));
+    if (selectedMatch?.id === matchId) setSelectedMatch(updated);
+    try {
+      await supabase.from('matches').update({ joined_players: updatedPlayers }).eq('id', matchId);
+    } catch (e) {
+      console.error('Failed to sync deposit status to Supabase:', e);
     }
   };
 
@@ -673,6 +722,7 @@ export default function App() {
       level: targetMatch.minLevel,
       phone: '',
       joinedAt: 'Vừa xong',
+      isPaidDeposit: true,
     };
 
     const updatedPlayers = [...targetMatch.joinedPlayers, guestPlayer];
@@ -736,7 +786,7 @@ export default function App() {
     }
   };
 
-  // Filtered matches with Vietnamese normalization & full field search
+  // Filtered matches with Vietnamese normalization & Skill Level Score Range matching (Bug 1 Fix)
   const filteredMatches = useMemo(() => {
     return matches.filter((m) => {
       if (activeTab === 'my-matches') {
@@ -755,7 +805,6 @@ export default function App() {
       }
 
       if (selectedDate !== 'Tất cả') {
-        // Strip parenthesized dates like "Thứ 6 (07/11)" -> "Thứ 6"
         const cleanDatePattern = selectedDate.split(' (')[0].trim().toLowerCase();
         const matchDateLower = m.date.toLowerCase();
         if (!matchDateLower.includes(cleanDatePattern)) {
@@ -781,21 +830,27 @@ export default function App() {
         if (m.joinedPlayers.length >= m.totalSlots) return false;
       }
 
+      // Trình độ so khớp theo thang điểm số chính xác (Bug 1)
       if (selectedLevel !== 'Tất cả') {
         if (selectedLevel === 'Hợp trình của tôi') {
-          const userLvl = currentUser.level || 'TB Yếu';
-          const matchesUser =
-            m.minLevel === userLvl ||
-            m.maxLevel === userLvl ||
-            m.minLevel.includes(userLvl) ||
-            m.maxLevel.includes(userLvl);
-          if (!matchesUser) return false;
+          const userScore = SKILL_LEVEL_SCORES[currentUser.level] ?? 3;
+          const minScore = SKILL_LEVEL_SCORES[m.minLevel] ?? 0;
+          const maxScore = SKILL_LEVEL_SCORES[m.maxLevel] ?? 9;
+          // Cho phép chênh lệch nhẹ ±1 bậc trình để người chơi dễ tìm được kèo giao lưu
+          if (userScore < minScore - 1 || userScore > maxScore + 1) return false;
         } else {
-          const matchesLevel =
-            m.minLevel.includes(selectedLevel) ||
-            m.maxLevel.includes(selectedLevel) ||
-            (selectedLevel === 'Trung Bình' && (m.minLevel.includes('TB') || m.maxLevel.includes('TB')));
-          if (!matchesLevel) return false;
+          const targetScore = SKILL_LEVEL_SCORES[selectedLevel as SkillLevel];
+          if (targetScore !== undefined) {
+            const minScore = SKILL_LEVEL_SCORES[m.minLevel] ?? 0;
+            const maxScore = SKILL_LEVEL_SCORES[m.maxLevel] ?? 9;
+            if (targetScore < minScore || targetScore > maxScore) return false;
+          } else {
+            const matchesLevel =
+              m.minLevel.includes(selectedLevel) ||
+              m.maxLevel.includes(selectedLevel) ||
+              (selectedLevel === 'Trung Bình' && (m.minLevel.includes('TB') || m.maxLevel.includes('TB')));
+            if (!matchesLevel) return false;
+          }
         }
       }
 
@@ -827,6 +882,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-white pb-28 sm:pb-0">
+      {/* Offline Banner (Imp 32) */}
+      {!isOnline && (
+        <div className="bg-amber-500 text-slate-900 px-4 py-2 text-xs font-bold text-center flex items-center justify-center gap-1.5 shadow-sm">
+          <span>📶 Bạn đang ngoại tuyến. Dữ liệu trên màn hình là bản lưu trữ cục bộ.</span>
+        </div>
+      )}
+
       {/* Auth Error Banner if present */}
       {authError && (
         <div className="bg-rose-600 text-white px-4 py-2.5 text-xs sm:text-sm font-semibold flex items-center justify-between">
@@ -1011,8 +1073,8 @@ export default function App() {
               </div>
               <div className="w-px h-10 bg-white/20" />
               <div className="text-center px-2 sm:px-4">
-                <div className="text-xl sm:text-3xl font-black text-yellow-300">5 Cấp</div>
-                <div className="text-[11px] sm:text-xs text-emerald-200 font-medium">Chuẩn phân trình</div>
+                <div className="text-xl sm:text-3xl font-black text-yellow-300">10 Bậc</div>
+                <div className="text-[11px] sm:text-xs text-emerald-200 font-medium">Thang đo phân trình</div>
               </div>
             </div>
           </div>
@@ -1067,6 +1129,32 @@ export default function App() {
               }`}
             >
               ⚡ Còn slot
+            </button>
+
+            {/* Quick Time Slot: Ca Tối (Bug 8) */}
+            <button
+              type="button"
+              onClick={() => setSelectedTimeSlot(selectedTimeSlot === 'evening' ? 'Tất cả' : 'evening')}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+                selectedTimeSlot === 'evening'
+                  ? 'bg-emerald-600 text-white border-emerald-600 font-bold'
+                  : 'bg-white text-slate-700 border-slate-200 active:bg-slate-100'
+              }`}
+            >
+              🌙 Ca Tối (&gt;17h)
+            </button>
+
+            {/* Quick Time Slot: Ca Sáng */}
+            <button
+              type="button"
+              onClick={() => setSelectedTimeSlot(selectedTimeSlot === 'morning' ? 'Tất cả' : 'morning')}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+                selectedTimeSlot === 'morning'
+                  ? 'bg-emerald-600 text-white border-emerald-600 font-bold'
+                  : 'bg-white text-slate-700 border-slate-200 active:bg-slate-100'
+              }`}
+            >
+              ☀️ Ca Sáng (&lt;12h)
             </button>
 
             {/* Popular District Pills */}
@@ -1622,6 +1710,17 @@ export default function App() {
                 Bạn sắp vào slot tại <strong>{confirmJoinMatch.courtName}</strong> ({confirmJoinMatch.startTime} - {confirmJoinMatch.endTime}, {confirmJoinMatch.date}).
               </p>
             </div>
+
+            {/* Cảnh báo nếu trình độ của người chơi thấp hơn nhiều so với sân */}
+            {(SKILL_LEVEL_SCORES[currentUser.level] ?? 3) < ((SKILL_LEVEL_SCORES[confirmJoinMatch.minLevel] ?? 0) - 1) && (
+              <div className="p-2.5 bg-amber-50 rounded-xl text-[11px] text-amber-800 border border-amber-200 text-left flex items-start gap-1.5">
+                <span className="text-sm">⚠️</span>
+                <span>
+                  Trình độ sân này ({confirmJoinMatch.minLevel} - {confirmJoinMatch.maxLevel}) cao hơn trình hiện tại của bạn ({currentUser.level}). Bạn hãy chắc chắn sẵn sàng để tránh bị ngộp trận nhé!
+                </span>
+              </div>
+            )}
+
             <div className="p-3 bg-slate-50 rounded-2xl text-xs text-slate-600 space-y-1.5 text-left border border-slate-100">
               <div className="flex justify-between">
                 <span className="text-slate-400">Chi phí:</span>
@@ -1691,12 +1790,15 @@ export default function App() {
         onEditMatch={handleEditMatch}
         onDeleteMatch={handleDeleteMatch}
         onAddGuest={handleAddGuest}
+        onCloneMatch={handleCloneMatch}
+        onTogglePlayerDeposit={handleTogglePlayerDeposit}
       />
 
       <CreateMatchModal
         isOpen={isCreateOpen}
         currentUser={currentUser}
         editMatch={editingMatch}
+        cloneMatch={cloningMatch}
         onClose={handleCloseCreateMatch}
         onCreate={handleCreateMatch}
         onUpdate={handleUpdateMatch}

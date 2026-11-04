@@ -19,8 +19,9 @@ import {
   Clock,
   Check,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
-import { getDefaultCourtImage } from '../supabase';
+import { getDefaultCourtImage, SVG_BADMINTON_FALLBACK } from '../supabase';
 
 interface MatchDetailModalProps {
   match: MatchPost | null;
@@ -32,6 +33,8 @@ interface MatchDetailModalProps {
   onEditMatch?: (match: MatchPost) => void;
   onDeleteMatch?: (matchId: string) => void;
   onAddGuest?: (matchId: string) => void;
+  onCloneMatch?: (match: MatchPost) => void;
+  onTogglePlayerDeposit?: (matchId: string, playerId: string) => void;
 }
 
 export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
@@ -44,6 +47,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   onEditMatch,
   onDeleteMatch,
   onAddGuest,
+  onCloneMatch,
+  onTogglePlayerDeposit,
 }) => {
   const [copiedBank, setCopiedBank] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
@@ -74,7 +79,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
   const cleanHostPhone = match.hostPhone ? match.hostPhone.replace(/[^0-9]/g, '') : '';
 
-  // Tính trạng thái thời gian đếm ngược
+  // Tính trạng thái thời gian đếm ngược & hết hạn
   const getCountdownLabel = () => {
     try {
       const now = new Date();
@@ -99,23 +104,48 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
       const diffMins = Math.round(diffMs / 60000);
 
       if (now.getTime() > endTargetDate.getTime()) {
-        return { text: 'Kèo đã kết thúc', color: 'bg-slate-500' };
+        return { text: 'Kèo đã kết thúc', color: 'bg-slate-500', isExpired: true };
       }
       if (diffMins <= 0 && now.getTime() <= endTargetDate.getTime()) {
-        return { text: 'Đang diễn ra', color: 'bg-emerald-600 animate-pulse' };
+        return { text: 'Đang diễn ra', color: 'bg-emerald-600 animate-pulse', isExpired: false };
       }
       if (diffMins < 60) {
-        return { text: `Sắp bắt đầu (${diffMins} phút nữa)`, color: 'bg-amber-600' };
+        return { text: `Sắp bắt đầu (${diffMins} phút nữa)`, color: 'bg-amber-600', isExpired: false };
       }
       const hours = Math.floor(diffMins / 60);
       const mins = diffMins % 60;
-      return { text: `Diễn ra sau ${hours}h ${mins > 0 ? `${mins}p` : ''}`, color: 'bg-teal-600' };
+      return { text: `Diễn ra sau ${hours}h ${mins > 0 ? `${mins}p` : ''}`, color: 'bg-teal-600', isExpired: false };
     } catch {
       return null;
     }
   };
 
   const countdown = getCountdownLabel();
+  const isExpired = countdown?.isExpired || false;
+
+  // Link thêm vào Google Calendar
+  const getGoogleCalendarUrl = () => {
+    try {
+      const startDate = new Date();
+      if (match.date === 'Ngày mai') {
+        startDate.setDate(startDate.getDate() + 1);
+      }
+      const [sH, sM] = match.startTime.split(':').map(Number);
+      startDate.setHours(sH, sM, 0, 0);
+
+      const endDate = new Date(startDate);
+      const [eH, eM] = match.endTime.split(':').map(Number);
+      endDate.setHours(eH, eM, 0, 0);
+
+      const formatIsoTime = (d: Date) => d.toISOString().replace(/-|:|\.\d\d\d/g, '');
+      const startIso = formatIsoTime(startDate);
+      const endIso = formatIsoTime(endDate);
+
+      return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`🏸 Giao lưu cầu lông: ${match.courtName}`)}&dates=${startIso}/${endIso}&details=${encodeURIComponent(`Kèo giao lưu cầu lông tại ${match.courtName}\nHost: ${match.hostName} (Zalo: ${match.hostPhone})\nChi phí: Nam ${formatMoney(match.priceMale)} - Nữ ${formatMoney(match.priceFemale)}`)}&location=${encodeURIComponent(`${match.courtName}, ${match.address}`)}`;
+    } catch {
+      return '#';
+    }
+  };
 
   // Sao chép nội dung bài đăng đẹp chuẩn Zalo/Facebook
   const handleCopyShareText = () => {
@@ -127,7 +157,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 🎯 Trình độ: ${match.minLevel} ➔ ${match.maxLevel}
 💰 Chi phí: Nam ${formatMoney(match.priceMale)} | Nữ ${formatMoney(match.priceFemale)}
 📞 Liên hệ Host: ${match.hostName} - ${match.hostPhone}
-🔗 Link tham gia nhanh: ${window.location.origin}`;
+🔗 Link tham gia nhanh: ${window.location.origin}/#match-${match.id}`;
 
     navigator.clipboard.writeText(text);
     setCopiedShare(true);
@@ -141,12 +171,30 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     setTimeout(() => setCopiedBank(false), 2000);
   };
 
+  const handleCopyAllPhones = () => {
+    const phones = match.joinedPlayers
+      .map((p) => (p.phone ? p.phone.replace(/[^0-9]/g, '') : ''))
+      .filter(Boolean);
+    if (phones.length === 0) {
+      alert('Chưa có số điện thoại nào từ người chơi.');
+      return;
+    }
+    navigator.clipboard.writeText(phones.join(', '));
+    alert(`Đã sao chép ${phones.length} số điện thoại để bạn tạo nhóm Zalo hoặc gọi dặn dò!`);
+  };
+
   const handleDeleteWithConfirm = () => {
     if (window.confirm('Bạn có chắc chắn muốn hủy / xóa kèo giao lưu này? Các thành viên sẽ thấy kèo bị đóng.')) {
       if (onDeleteMatch) {
         onDeleteMatch(match.id);
         onClose();
       }
+    }
+  };
+
+  const handleCancelJoinWithConfirm = () => {
+    if (window.confirm('Bạn có chắc chắn muốn hủy giữ slot này? Hành động này sẽ nhường chỗ cho người khác.')) {
+      onToggleJoin(match.id);
     }
   };
 
@@ -167,14 +215,23 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
             alt={match.courtName}
             className="w-full h-full object-cover"
             onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=800&auto=format&fit=crop&q=80';
+              (e.target as HTMLImageElement).src = SVG_BADMINTON_FALLBACK;
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/40 pointer-events-none" />
 
           {/* Top Actions: Copy Post, Share & Close */}
           <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+            <a
+              href={getGoogleCalendarUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center gap-1.5 text-white hover:bg-black/70 transition-all text-xs font-semibold shadow-sm cursor-pointer"
+              title="Thêm lịch hẹn vào Google Calendar"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Lịch Google</span>
+            </a>
             <button
               type="button"
               onClick={handleCopyShareText}
@@ -189,7 +246,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               ) : (
                 <>
                   <Share2 className="w-3.5 h-3.5" />
-                  <span>Sao chép bài</span>
+                  <span>Sao chép</span>
                 </>
               )}
             </button>
@@ -220,6 +277,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   {countdown.text}
                 </span>
               )}
+              {match.isUrgent && !isExpired && (
+                <span className="text-[11px] text-white font-extrabold px-2 py-0.5 rounded-full bg-rose-600 animate-pulse shadow-xs">
+                  ⚡ Tuyển Gấp
+                </span>
+              )}
             </div>
             <h2 className="text-lg sm:text-xl font-extrabold text-white leading-tight drop-shadow-xs line-clamp-1">
               {match.courtName}
@@ -236,7 +298,30 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 <Sparkles className="w-4 h-4 text-emerald-600" />
                 <span>Bạn là Host của kèo này</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyAllPhones}
+                  className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all"
+                  title="Sao chép toàn bộ SĐT để tạo nhóm Zalo"
+                >
+                  <Phone className="w-3.5 h-3.5 text-blue-600" />
+                  Chép DS SĐT
+                </button>
+                {onCloneMatch && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onCloneMatch(match);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all"
+                    title="Nhân bản bài đăng này cho ngày đánh tiếp theo"
+                  >
+                    <Copy className="w-3.5 h-3.5 text-emerald-600" />
+                    Nhân bản kèo
+                  </button>
+                )}
                 {onAddGuest && remainingSlots > 0 && (
                   <button
                     type="button"
@@ -376,6 +461,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               </div>
               <div className="text-[11px] text-slate-600 mb-3">
                 Kèo này yêu cầu cọc trước để Host khóa sân và chống bùng slot giờ chót.
+                {match.refundPolicy && (
+                  <span className="block mt-1 text-emerald-800 font-semibold">
+                    🛡️ {match.refundPolicy}
+                  </span>
+                )}
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-3.5 rounded-xl border border-emerald-100">
@@ -384,7 +474,6 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   alt="Mã QR chuyển khoản cọc"
                   className="w-36 h-36 object-contain rounded-lg border border-slate-200 shadow-2xs"
                   onError={(e) => {
-                    // Fallback to QR code generator if bank code fails
                     (e.target as HTMLImageElement).src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`Chuyen khoan ${match.bankInfo?.bankName} STK ${match.bankInfo?.accountNumber} Tien ${match.bankInfo?.depositAmount}`)}`;
                   }}
                 />
@@ -524,17 +613,41 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Host action: Remove player if mismatch */}
-                    {isHost && !isMe && onRemovePlayer && (
-                      <button
-                        type="button"
-                        onClick={() => onRemovePlayer(match.id, player.userId)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer"
-                        title="Hủy slot nếu không hợp trình"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {/* Deposit Status Badge / Toggle */}
+                      {match.bankInfo && (
+                        isHost ? (
+                          <button
+                            type="button"
+                            onClick={() => onTogglePlayerDeposit && onTogglePlayerDeposit(match.id, player.userId)}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                              player.isPaidDeposit
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : 'bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200'
+                            }`}
+                            title="Bấm để đánh dấu Đã cọc / Chưa cọc"
+                          >
+                            {player.isPaidDeposit ? '✓ Đã cọc' : 'Chưa cọc'}
+                          </button>
+                        ) : player.isPaidDeposit ? (
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                            ✓ Đã cọc
+                          </span>
+                        ) : null
+                      )}
+
+                      {/* Host action: Remove player if mismatch */}
+                      {isHost && !isMe && onRemovePlayer && (
+                        <button
+                          type="button"
+                          onClick={() => onRemovePlayer(match.id, player.userId)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer"
+                          title="Hủy slot nếu không hợp trình"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -552,12 +665,20 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               </div>
               <button
                 type="button"
-                onClick={() => onToggleJoin(match.id)}
+                onClick={handleCancelJoinWithConfirm}
                 className="px-4 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold cursor-pointer transition-colors"
               >
                 Hủy tham gia
               </button>
             </div>
+          ) : isExpired ? (
+            <button
+              type="button"
+              disabled
+              className="w-full py-3 rounded-2xl bg-slate-200 text-slate-500 font-bold text-sm cursor-not-allowed"
+            >
+              Kèo này đã kết thúc
+            </button>
           ) : isFull ? (
             <button
               type="button"

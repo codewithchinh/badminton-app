@@ -11,6 +11,7 @@ interface CreateMatchModalProps {
   onCreate: (newMatch: MatchPost) => void;
   onUpdate?: (updatedMatch: MatchPost) => void;
   editMatch?: MatchPost | null;
+  cloneMatch?: MatchPost | null;
 }
 
 const DISTRICTS = [
@@ -81,6 +82,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   onCreate,
   onUpdate,
   editMatch,
+  cloneMatch,
 }) => {
   const [title, setTitle] = useState('');
   const [courtName, setCourtName] = useState('');
@@ -115,36 +117,41 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const [accountNumber, setAccountNumber] = useState('');
   const [accountName, setAccountName] = useState('');
   const [depositAmount, setDepositAmount] = useState<number>(30000);
+  const [refundPolicy, setRefundPolicy] = useState('Hoàn cọc 100% nếu báo trước 2 tiếng');
+  const [isUrgent, setIsUrgent] = useState(false);
 
-  // Sync state when opening or when editMatch is passed
+  // Sync state when opening or when editMatch / cloneMatch is passed
   useEffect(() => {
-    if (editMatch) {
-      setTitle(editMatch.title || '');
-      setCourtName(editMatch.courtName || '');
-      setSelectedCourtName(editMatch.courtName || '');
-      setDistrict(editMatch.district || 'Tân Phú');
-      setAddress(editMatch.address || '');
-      setGoogleMapsUrl(editMatch.googleMapsUrl || '');
-      setDate(editMatch.date || 'Hôm nay');
-      setStartTime(editMatch.startTime || '18:00');
-      setEndTime(editMatch.endTime || '20:00');
-      setCourtNumber(editMatch.courtNumber || '');
-      setShuttleType(editMatch.shuttleType || 'VinaStar Đỏ');
-      setTotalSlots(editMatch.totalSlots || 8);
-      setMinLevel(editMatch.minLevel || 'TB Yếu');
-      setMaxLevel(editMatch.maxLevel || 'TB+');
-      setPriceMale(editMatch.priceMale || 60000);
-      setPriceFemale(editMatch.priceFemale || 40000);
-      setCoverImage(editMatch.coverImage || '');
-      setNotes(editMatch.notes || '');
-      setTargetGender(editMatch.targetGender || 'all');
-      setSelectedAmenities(editMatch.amenities && editMatch.amenities.length > 0 ? editMatch.amenities : ['Thảm chuẩn thi đấu', 'Nước đá miễn phí']);
-      if (editMatch.bankInfo) {
+    const sourceMatch = editMatch || cloneMatch;
+    if (sourceMatch) {
+      setTitle(cloneMatch ? `Tuyển vãng lai tại ${sourceMatch.courtName} (Lịch mới)` : (sourceMatch.title || ''));
+      setCourtName(sourceMatch.courtName || '');
+      setSelectedCourtName(sourceMatch.courtName || '');
+      setDistrict(sourceMatch.district || 'Tân Phú');
+      setAddress(sourceMatch.address || '');
+      setGoogleMapsUrl(sourceMatch.googleMapsUrl || '');
+      setDate(cloneMatch ? 'Ngày mai' : (sourceMatch.date || 'Hôm nay'));
+      setStartTime(sourceMatch.startTime || '18:00');
+      setEndTime(sourceMatch.endTime || '20:00');
+      setCourtNumber(sourceMatch.courtNumber || '');
+      setShuttleType(sourceMatch.shuttleType || 'VinaStar Đỏ');
+      setTotalSlots(sourceMatch.totalSlots || 8);
+      setMinLevel(sourceMatch.minLevel || 'TB Yếu');
+      setMaxLevel(sourceMatch.maxLevel || 'TB+');
+      setPriceMale(sourceMatch.priceMale || 60000);
+      setPriceFemale(sourceMatch.priceFemale || 40000);
+      setCoverImage(sourceMatch.coverImage || '');
+      setNotes(sourceMatch.notes || '');
+      setTargetGender(sourceMatch.targetGender || 'all');
+      setSelectedAmenities(sourceMatch.amenities && sourceMatch.amenities.length > 0 ? sourceMatch.amenities : ['Thảm chuẩn thi đấu', 'Nước đá miễn phí']);
+      setRefundPolicy(sourceMatch.refundPolicy || 'Hoàn cọc 100% nếu báo trước 2 tiếng');
+      setIsUrgent(cloneMatch ? false : (sourceMatch.isUrgent || false));
+      if (sourceMatch.bankInfo) {
         setHasBankInfo(true);
-        setBankName(editMatch.bankInfo.bankName || 'MBBank');
-        setAccountNumber(editMatch.bankInfo.accountNumber || '');
-        setAccountName(editMatch.bankInfo.accountName || '');
-        setDepositAmount(editMatch.bankInfo.depositAmount || 30000);
+        setBankName(sourceMatch.bankInfo.bankName || 'MBBank');
+        setAccountNumber(sourceMatch.bankInfo.accountNumber || '');
+        setAccountName(sourceMatch.bankInfo.accountName || '');
+        setDepositAmount(sourceMatch.bankInfo.depositAmount || 30000);
       } else {
         setHasBankInfo(false);
         setAccountNumber('');
@@ -172,13 +179,15 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       setNotes('Sân vui vẻ giao lưu, có nước đá miễn phí. Đến đúng giờ nhé cả nhà!');
       setTargetGender('all');
       setSelectedAmenities(['Thảm chuẩn thi đấu', 'Nước đá miễn phí']);
+      setRefundPolicy('Hoàn cọc 100% nếu báo trước 2 tiếng');
+      setIsUrgent(false);
       setHasBankInfo(false);
       setBankName('MBBank');
       setAccountNumber('');
       setAccountName('');
       setDepositAmount(30000);
     }
-  }, [isOpen, editMatch]);
+  }, [isOpen, editMatch, cloneMatch]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -321,6 +330,9 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
         targetGender,
         amenities: selectedAmenities,
         bankInfo: bankData,
+        refundPolicy: hasBankInfo ? refundPolicy : undefined,
+        isUrgent,
+        updatedAt: new Date().toISOString(),
       };
       onUpdate(updatedMatch);
       onClose();
@@ -348,6 +360,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
           level: currentUser.level,
           phone: currentUser.phone,
           joinedAt: 'Vừa xong',
+          isPaidDeposit: true,
         },
       ],
       minLevel,
@@ -366,6 +379,8 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       status: 'active',
       targetGender,
       amenities: selectedAmenities,
+      refundPolicy: hasBankInfo ? refundPolicy : undefined,
+      isUrgent,
       bankInfo: bankData,
     };
 
@@ -886,8 +901,41 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                       />
                     </div>
                   </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Quy định hoàn cọc
+                    </label>
+                    <select
+                      value={refundPolicy}
+                      onChange={(e) => setRefundPolicy(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-emerald-500 font-medium"
+                    >
+                      <option value="Hoàn cọc 100% nếu báo trước 2 tiếng">Hoàn cọc 100% nếu báo trước 2 tiếng</option>
+                      <option value="Hoàn cọc nếu báo trước 4 tiếng">Hoàn cọc nếu báo trước 4 tiếng</option>
+                      <option value="Chỉ hoàn cọc khi tìm được người thay thế">Chỉ hoàn cọc khi tìm được người thay thế</option>
+                      <option value="Không hoàn cọc nếu hủy sát giờ">Không hoàn cọc nếu hủy sát giờ</option>
+                    </select>
+                  </div>
                 </div>
               )}
+            </div>
+
+            {/* Cần tuyển gấp */}
+            <div className="mt-2 flex items-center justify-between p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/80">
+              <div className="text-xs">
+                <span className="font-bold text-amber-900 block">⚡ Cần tuyển gấp trong ngày</span>
+                <span className="text-[11px] text-amber-700 block">Gắn huy hiệu nổi bật & đẩy lên đầu danh sách</span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isUrgent}
+                  onChange={(e) => setIsUrgent(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-8 h-4 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-amber-500"></div>
+              </label>
             </div>
           </div>
 

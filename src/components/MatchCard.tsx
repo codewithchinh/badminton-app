@@ -1,7 +1,7 @@
 import React from 'react';
 import type { MatchPost, UserProfile } from '../types';
 import { Clock, MapPin, Zap, CheckCircle, ShieldCheck, Bookmark, QrCode } from 'lucide-react';
-import { getDefaultCourtImage } from '../supabase';
+import { getDefaultCourtImage, SVG_BADMINTON_FALLBACK } from '../supabase';
 
 interface MatchCardProps {
   match: MatchPost;
@@ -44,18 +44,24 @@ export const MatchCard: React.FC<MatchCardProps> = ({
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           loading="lazy"
           onError={(e) => {
-            (e.target as HTMLImageElement).src =
-              'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=800&auto=format&fit=crop&q=80';
+            (e.target as HTMLImageElement).src = SVG_BADMINTON_FALLBACK;
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
 
-        {/* Top-left: Time Badge */}
-        <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/55 backdrop-blur-md text-white text-xs font-semibold shadow-xs">
-          <Clock className="w-3.5 h-3.5 text-emerald-400" />
-          <span>{match.date}</span>
-          <span className="text-white/40">•</span>
-          <span className="text-emerald-300 font-bold">{match.startTime} - {match.endTime}</span>
+        {/* Top-left: Time Badge & Urgent */}
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/55 backdrop-blur-md text-white text-xs font-semibold shadow-xs">
+            <Clock className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{match.date}</span>
+            <span className="text-white/40">•</span>
+            <span className="text-emerald-300 font-bold">{match.startTime} - {match.endTime}</span>
+          </div>
+          {match.isUrgent && (
+            <span className="px-2 py-0.5 rounded-full bg-rose-600/90 text-white text-[11px] font-extrabold animate-pulse shadow-xs">
+              ⚡ Tuyển Gấp
+            </span>
+          )}
         </div>
 
         {/* Top-right: Slot Status Badge & Bookmark */}

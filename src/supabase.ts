@@ -41,6 +41,9 @@ export interface DbMatchRow {
   created_at: string;
 }
 
+export const SVG_BADMINTON_FALLBACK =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 500' width='800' height='500'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23064e3b'/%3E%3Cstop offset='100%25' stop-color='%230f766e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='url(%23bg)'/%3E%3Cpath d='M100 80 H700 V420 H100 Z M400 80 V420 M100 250 H700' stroke='white' stroke-width='4' stroke-opacity='0.4' fill='none'/%3E%3Ctext x='400' y='270' font-family='system-ui, sans-serif' font-size='32' font-weight='bold' fill='white' text-anchor='middle'%3E%F0%9F%8F%B8 S%C3%A2n C%E1%BA%A7u L%C3%B4ng%3C/text%3E%3C/svg%3E";
+
 export const COURT_PRESET_IMAGES: { id: string; name: string; url: string; matchKey: string }[] = [
   {
     id: 'tham-xanh',
@@ -142,9 +145,12 @@ export function toMatchPost(row: DbMatchRow): MatchPost {
     googleMapsUrl,
     notes: cleanNotes,
     createdAt: row.created_at,
+    updatedAt: extraMeta.updatedAt,
     status: extraMeta.status || 'active',
     targetGender: extraMeta.targetGender || 'all',
     amenities: Array.isArray(extraMeta.amenities) ? extraMeta.amenities : [],
+    refundPolicy: extraMeta.refundPolicy,
+    isUrgent: extraMeta.isUrgent,
     bankInfo: extraMeta.bankInfo,
   };
 }
@@ -156,6 +162,9 @@ export function toDbRow(match: MatchPost): DbMatchRow {
   if (match.targetGender) metaToSave.targetGender = match.targetGender;
   if (match.amenities && match.amenities.length > 0) metaToSave.amenities = match.amenities;
   if (match.bankInfo) metaToSave.bankInfo = match.bankInfo;
+  if (match.refundPolicy) metaToSave.refundPolicy = match.refundPolicy;
+  if (typeof match.isUrgent === 'boolean') metaToSave.isUrgent = match.isUrgent;
+  if (match.updatedAt) metaToSave.updatedAt = match.updatedAt;
 
   if (Object.keys(metaToSave).length > 0) {
     formattedNotes = `[META:${encodeURIComponent(JSON.stringify(metaToSave))}] ${formattedNotes}`.trim();

@@ -10,6 +10,19 @@ export type SkillLevel =
   | 'Khá (Bán chuyên)'
   | 'Tốt (Ăn tập)';
 
+export const SKILL_LEVEL_SCORES: Record<SkillLevel, number> = {
+  'Newbie': 0,
+  'Yếu': 1,
+  'Yếu+': 2,
+  'TB Yếu': 3,
+  'TB-': 4,
+  'Trung Bình': 5,
+  'TB+': 6,
+  'TB+++': 7,
+  'Khá (Bán chuyên)': 8,
+  'Tốt (Ăn tập)': 9,
+};
+
 export interface Player {
   userId: string;
   name: string;
@@ -17,6 +30,8 @@ export interface Player {
   level: SkillLevel;
   phone: string;
   joinedAt: string;
+  isPaidDeposit?: boolean;
+  gender?: 'male' | 'female';
 }
 
 export interface MatchPost {
@@ -46,9 +61,12 @@ export interface MatchPost {
   googleMapsUrl?: string;
   notes: string;
   createdAt: string;
+  updatedAt?: string;
   status?: 'active' | 'completed' | 'cancelled';
   targetGender?: 'all' | 'male' | 'female';
   amenities?: string[];
+  refundPolicy?: string;
+  isUrgent?: boolean;
   bankInfo?: {
     bankName: string;
     accountNumber: string;
@@ -69,4 +87,5 @@ export interface UserProfile {
   joinedMatchIds: string[];
   savedMatchIds?: string[];
   playedMatchesCount?: number;
+  gender?: 'male' | 'female';
 }
