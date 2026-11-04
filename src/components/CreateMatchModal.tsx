@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { MatchPost, SkillLevel, UserProfile } from '../types';
 import { X, Plus, Sparkles, Image as ImageIcon, Check, MapPin, Navigation, Upload, Camera, Trash2 } from 'lucide-react';
-import { COURT_PRESET_IMAGES, getDefaultCourtImage } from '../supabase';
+import { getDefaultCourtImage } from '../supabase';
 import { searchCourts, type CourtInfo } from '../data/badmintonCourts';
 
 interface CreateMatchModalProps {
@@ -101,25 +101,9 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const [priceMale, setPriceMale] = useState(60000);
   const [priceFemale, setPriceFemale] = useState(40000);
   const [coverImage, setCoverImage] = useState('');
-  const [recentImages, setRecentImages] = useState<string[]>([]);
   const [notes, setNotes] = useState('Sân vui vẻ giao lưu, có nước đá miễn phí. Đến đúng giờ nhé cả nhà!');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Load recently used images by Host if any
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('timvanglai_host_recent_images');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setRecentImages(parsed);
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, []);
 
   if (!isOpen) return null;
 
@@ -188,9 +172,6 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
     } else {
       setAvailableCourtsCount(18);
     }
-    if (court.image) {
-      setCoverImage(court.image);
-    }
     setShowSuggestions(false);
   };
 
@@ -201,17 +182,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       return;
     }
 
-    // Save uploaded or selected image to Host's recent images
-    const chosenImage = coverImage.trim() || getDefaultCourtImage(courtName.trim(), district);
-    if (chosenImage) {
-      try {
-        const updatedRecent = [chosenImage, ...recentImages.filter((img) => img !== chosenImage)].slice(0, 4);
-        setRecentImages(updatedRecent);
-        localStorage.setItem('timvanglai_host_recent_images', JSON.stringify(updatedRecent));
-      } catch (err) {
-        // ignore
-      }
-    }
+    const finalImage = coverImage.trim() || getDefaultCourtImage(courtName.trim(), district);
 
     const finalMapsUrl =
       googleMapsUrl.trim() ||
@@ -251,7 +222,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       hostAvatar: currentUser.avatar,
       hostPhone: currentUser.phone,
       hostBadge: 'Host mới ⭐ 5.0',
-      coverImage: coverImage.trim() || getDefaultCourtImage(courtName.trim(), district),
+      coverImage: finalImage,
       googleMapsUrl: finalMapsUrl,
       notes: notes.trim(),
       createdAt: 'Vừa xong',
@@ -616,7 +587,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-emerald-600" />
-                Ảnh sân hoặc ảnh nhóm
+                Ảnh sân hoặc ảnh nhóm <span className="text-slate-400 font-normal">(Tùy chọn)</span>
               </label>
               <span className="text-[11px] text-slate-400 font-medium">Tự động gán nếu bỏ trống</span>
             </div>
@@ -630,18 +601,18 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
               onChange={handleFileUpload}
             />
 
-            {/* Khung hiển thị ảnh đã chọn HOẶC Nút tải ảnh trực tiếp */}
+            {/* Nếu đã tải ảnh lên: hiển thị khung ảnh đã chọn kèm nút Đổi ảnh & Xóa */}
             {coverImage ? (
-              <div className="relative rounded-2xl overflow-hidden border border-slate-200 mb-3 bg-slate-900 shadow-sm">
+              <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 shadow-sm">
                 <img
                   src={coverImage}
                   alt="Ảnh sân đã chọn"
-                  className="w-full h-40 object-cover"
+                  className="w-full h-44 object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end justify-between p-3">
                   <div className="text-white text-xs font-medium truncate flex items-center gap-1.5">
                     <Check className="w-4 h-4 text-emerald-400" />
-                    <span>Ảnh đã chọn sẵn sàng hiển thị</span>
+                    <span>Ảnh đã tải lên sẵn sàng</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -664,94 +635,25 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                 </div>
               </div>
             ) : (
+              /* Khung trống duy nhất để Host bấm tải ảnh từ máy lên */
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full py-3 px-4 rounded-2xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/50 hover:bg-emerald-50 transition-all flex items-center justify-center gap-2.5 text-emerald-700 font-bold text-xs cursor-pointer mb-3 group active:scale-[0.99]"
+                className="w-full py-8 px-4 rounded-2xl border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-slate-50/70 hover:bg-emerald-50/40 transition-all flex flex-col items-center justify-center gap-2 text-slate-600 hover:text-emerald-700 cursor-pointer group active:scale-[0.99]"
               >
-                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Upload className="w-4 h-4 text-emerald-600" />
+                <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center group-hover:scale-110 group-hover:border-emerald-300 transition-all">
+                  <Upload className="w-5 h-5 text-slate-500 group-hover:text-emerald-600" />
                 </div>
-                <span>Tải ảnh từ điện thoại / máy tính</span>
+                <div className="text-center">
+                  <span className="text-xs font-bold block text-slate-800 group-hover:text-emerald-700">
+                    Bấm để tải ảnh từ điện thoại / máy tính lên
+                  </span>
+                  <span className="text-[11px] text-slate-400 block mt-0.5">
+                    Hỗ trợ file JPG, PNG, WebP (Tùy chọn)
+                  </span>
+                </div>
               </button>
             )}
-
-            {/* 1. Ảnh bạn đã từng đăng (Chỉ hiện khi Host đã có ảnh từng dùng) */}
-            {recentImages.length > 0 && (
-              <div className="mb-3">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-                  Ảnh bạn đã dùng gần đây
-                </span>
-                <div className="grid grid-cols-4 gap-2">
-                  {recentImages.slice(0, 4).map((imgUrl, idx) => {
-                    const isSelected = coverImage === imgUrl;
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setCoverImage(isSelected ? '' : imgUrl)}
-                        className={`relative rounded-xl overflow-hidden h-14 border-2 transition-all cursor-pointer group ${
-                          isSelected
-                            ? 'border-emerald-600 ring-2 ring-emerald-500/30'
-                            : 'border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        <img
-                          src={imgUrl}
-                          alt="Ảnh đã dùng"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                        {isSelected && (
-                          <div className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-emerald-600 text-white flex items-center justify-center">
-                            <Check className="w-2 h-2" />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* 2. Ảnh mẫu thể thao cầu lông chuẩn */}
-            <div>
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-                Hoặc chọn ảnh mẫu sân & VĐV Lin Dan
-              </span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {COURT_PRESET_IMAGES.slice(0, 4).map((preset) => {
-                  const isSelected = coverImage === preset.url;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => setCoverImage(isSelected ? '' : preset.url)}
-                      className={`relative rounded-xl overflow-hidden h-16 border-2 transition-all text-left cursor-pointer group ${
-                        isSelected
-                          ? 'border-emerald-600 ring-2 ring-emerald-500/30'
-                          : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <img
-                        src={preset.url}
-                        alt={preset.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-black/40 flex items-end p-1.5">
-                        <span className="text-[10px] text-white font-semibold truncate leading-tight">
-                          {preset.name.split(' (')[0]}
-                        </span>
-                      </div>
-                      {isSelected && (
-                        <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center">
-                          <Check className="w-2.5 h-2.5" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </div>
 
           {/* Ghi chú */}
