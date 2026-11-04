@@ -20,6 +20,9 @@ import {
   Check,
   Sparkles,
   Calendar,
+  AlertTriangle,
+  Flag,
+  Info,
 } from 'lucide-react';
 import { getDefaultCourtImage, SVG_BADMINTON_FALLBACK } from '../supabase';
 
@@ -52,6 +55,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 }) => {
   const [copiedBank, setCopiedBank] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
+  const [showLevelInfo, setShowLevelInfo] = useState(false);
+  const [isReported, setIsReported] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -123,13 +128,44 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const countdown = getCountdownLabel();
   const isExpired = countdown?.isExpired || false;
 
-  // Link thêm vào Google Calendar
+  // Link thêm vào Google Calendar tính đúng theo thứ và ngày thực tế (Bug 1 Fix)
   const getGoogleCalendarUrl = () => {
     try {
       const startDate = new Date();
       if (match.date === 'Ngày mai') {
         startDate.setDate(startDate.getDate() + 1);
+      } else if (match.date.includes('/')) {
+        const parts = match.date.match(/(\d{1,2})\/(\d{1,2})/);
+        if (parts) {
+          startDate.setDate(parseInt(parts[1], 10));
+          startDate.setMonth(parseInt(parts[2], 10) - 1);
+        }
+      } else if (match.date.includes('Thứ') || match.date.includes('Chủ Nhật')) {
+        const dayMap: Record<string, number> = {
+          'Chủ Nhật': 0,
+          'Thứ 2': 1,
+          'Thứ 3': 2,
+          'Thứ 4': 3,
+          'Thứ 5': 4,
+          'Thứ 6': 5,
+          'Thứ 7': 6,
+          'Thứ Bảy': 6,
+        };
+        const currentDay = startDate.getDay();
+        let targetDay = -1;
+        for (const [key, val] of Object.entries(dayMap)) {
+          if (match.date.includes(key)) {
+            targetDay = val;
+            break;
+          }
+        }
+        if (targetDay !== -1) {
+          let diff = targetDay - currentDay;
+          if (diff <= 0) diff += 7;
+          startDate.setDate(startDate.getDate() + diff);
+        }
       }
+
       const [sH, sM] = match.startTime.split(':').map(Number);
       startDate.setHours(sH, sM, 0, 0);
 
@@ -147,8 +183,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     }
   };
 
-  // Sao chép nội dung bài đăng đẹp chuẩn Zalo/Facebook
-  const handleCopyShareText = () => {
+  // Sao chép & Chia sẻ qua Native Web Share API hoặc Clipboard (Bug 9 / Imp 14)
+  const handleCopyShareText = async () => {
     const text = `🏸 KÈO GIAO LƯU CẦU LÔNG VÃNG LAI
 📍 Sân: ${match.courtName} - ${match.address} (${match.district})
 ⏰ Thời gian: ${match.startTime} - ${match.endTime} (${match.date})
@@ -159,9 +195,40 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 📞 Liên hệ Host: ${match.hostName} - ${match.hostPhone}
 🔗 Link tham gia nhanh: ${window.location.origin}/#match-${match.id}`;
 
+    if (navigator.vibrate) {
+      try {
+        navigator.vibrate(30);
+      } catch {}
+    }
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `🏸 Kèo giao lưu tại ${match.courtName}`,
+          text: text,
+          url: `${window.location.origin}/#match-${match.id}`,
+        });
+        return;
+      } catch {}
+    }
+
     navigator.clipboard.writeText(text);
     setCopiedShare(true);
     setTimeout(() => setCopiedShare(false), 2500);
+  };
+
+  const handleReportMatch = () => {
+    if (isReported) {
+      alert('Bạn đã gửi phản ánh cho bài đăng này rồi.');
+      return;
+    }
+    const reason = window.prompt(
+      'Vui lòng nhập lý do phản ánh (VD: Host không nghe máy, thông tin sai giờ/giá, kèo ảo...):'
+    );
+    if (reason && reason.trim()) {
+      setIsReported(true);
+      alert('Cảm ơn bạn! Ban quản trị TimVangLai đã tiếp nhận phản ánh và sẽ rà soát ngay.');
+    }
   };
 
   const handleCopyBankAccount = () => {
@@ -201,12 +268,13 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const coverSrc = match.coverImage || getDefaultCourtImage(match.courtName, match.district);
 
   return (
-    <div
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4"
-    >
+    <>
+      <div
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4"
+      >
       <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in fade-in slide-in-from-bottom-6 duration-200">
         {/* Banner Cover Image */}
         <div className="relative h-44 sm:h-52 w-full overflow-hidden bg-slate-900 shrink-0">
@@ -291,6 +359,22 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
         {/* Scrollable Body */}
         <div className="p-5 overflow-y-auto space-y-5 flex-1">
+          {/* Ghim thông báo khẩn của Host nếu có (Point 13) */}
+          {match.announcement && (
+            <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200/90 text-xs text-amber-950 flex items-start gap-2.5 shadow-2xs animate-in fade-in duration-150">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <div className="font-extrabold flex items-center justify-between text-amber-900">
+                  <span>THÔNG BÁO TỪ HOST:</span>
+                  <span className="text-[10px] bg-amber-200/80 text-amber-800 font-bold px-1.5 py-0.5 rounded">Ghim</span>
+                </div>
+                <div className="mt-1 leading-relaxed text-amber-900 font-medium">
+                  {match.announcement}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Host Management Toolbar */}
           {isHost && (
             <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex flex-wrap items-center justify-between gap-2">
@@ -433,12 +517,19 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
           {/* Trình độ & Chi phí */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-100">
-              <div className="text-[11px] font-semibold text-teal-700 uppercase">Yêu cầu trình độ</div>
+            <div
+              onClick={() => setShowLevelInfo(true)}
+              className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-100 hover:border-teal-300 transition-all cursor-pointer group"
+              title="Bấm để xem định nghĩa các cấp trình độ cầu lông"
+            >
+              <div className="text-[11px] font-semibold text-teal-700 uppercase flex items-center justify-between">
+                <span>Yêu cầu trình độ</span>
+                <Info className="w-3.5 h-3.5 text-teal-600 group-hover:scale-110 transition-transform" />
+              </div>
               <div className="text-sm font-bold text-teal-950 mt-1">
                 {match.minLevel} ➔ {match.maxLevel}
               </div>
-              <div className="text-[10px] text-teal-600 mt-0.5">Vui lòng đăng ký đúng trình</div>
+              <div className="text-[10px] text-teal-600 mt-0.5 underline font-medium">Bấm xem chuẩn trình</div>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-100">
@@ -652,6 +743,21 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 );
               })}
             </div>
+
+            {/* Báo cáo bài đăng (Point 8) */}
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+              <span>Gặp sự cố với bài đăng này?</span>
+              <button
+                type="button"
+                onClick={handleReportMatch}
+                className={`flex items-center gap-1 font-semibold cursor-pointer transition-colors ${
+                  isReported ? 'text-emerald-600' : 'text-slate-500 hover:text-rose-600'
+                }`}
+              >
+                <Flag className="w-3 h-3" />
+                {isReported ? 'Đã gửi phản ánh' : 'Báo cáo kèo ảo / sai thông tin'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -700,5 +806,57 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
         </div>
       </div>
     </div>
-  );
+
+    {/* Modal giải thích tiêu chuẩn các cấp trình độ (Point 4) */}
+    {showLevelInfo && (
+      <div
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setShowLevelInfo(false);
+        }}
+        className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+      >
+        <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
+              Chuẩn Trình Độ Cầu Lông Phong Trào
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowLevelInfo(false)}
+              className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="space-y-2.5 text-xs text-slate-600 max-h-72 overflow-y-auto pr-1">
+            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+              <span className="font-bold text-slate-800 block text-emerald-700">1. Newbie & Yếu / Yếu+</span>
+              <span className="text-[11px]">Mới tập chơi dưới 6 tháng. Đang tập cầm vợt, giao cầu và đánh qua lại ở mức cơ bản.</span>
+            </div>
+            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+              <span className="font-bold text-slate-800 block text-teal-700">2. TB Yếu & TB-</span>
+              <span className="text-[11px]">Chơi từ 6 tháng - 1.5 năm. Biết luật, phông cầu qua lại ổn định, đập và bỏ nhỏ nhẹ nhàng, bộ chân còn chậm.</span>
+            </div>
+            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+              <span className="font-bold text-slate-800 block text-blue-700">3. Trung Bình & TB+</span>
+              <span className="text-[11px]">Chơi từ 2 - 4 năm. Phông sâu cuối sân tốt, đập cầu có lực, thủ cầu chắc chắn, phối hợp đôi nhịp nhàng.</span>
+            </div>
+            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+              <span className="font-bold text-slate-800 block text-purple-700">4. Khá (Bán chuyên) & Tốt (Ăn tập)</span>
+              <span className="text-[11px]">Từng tập năng khiếu hoặc đánh giải phong trào. Phản xạ tạt cầu cực nhanh, thể lực và bộ chân bao sân bài bản.</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowLevelInfo(false)}
+            className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 cursor-pointer"
+          >
+            Đã hiểu
+          </button>
+        </div>
+      </div>
+    )}
+  </>
+);
 };

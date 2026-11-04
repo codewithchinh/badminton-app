@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { MatchPost, UserProfile } from '../types';
+import { isValidVietnamesePhone, formatPhoneNumber } from '../types';
 import { X, Award, Phone, Calendar, RefreshCw, Bookmark, Edit2, Check, LogOut } from 'lucide-react';
 
 interface ProfileModalProps {
@@ -56,10 +57,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       alert('Vui lòng nhập họ tên!');
       return;
     }
+    const cleanPhone = phone.trim().replace(/[^0-9]/g, '');
+    if (cleanPhone && !isValidVietnamesePhone(cleanPhone)) {
+      alert('Số điện thoại không hợp lệ! Vui lòng nhập đúng số điện thoại di động Việt Nam (10 số, đầu 03, 05, 07, 08, 09).');
+      return;
+    }
     if (onUpdateProfile) {
       onUpdateProfile({
         name: name.trim(),
-        phone: phone.trim(),
+        phone: cleanPhone ? formatPhoneNumber(cleanPhone) : '',
       });
     }
     setIsEditing(false);

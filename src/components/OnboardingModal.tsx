@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { SkillLevel, UserProfile } from '../types';
+import { isValidVietnamesePhone, formatPhoneNumber } from '../types';
 import { Award, CheckCircle2, ChevronRight, Sparkles, User, X } from 'lucide-react';
 
 interface OnboardingModalProps {
@@ -76,10 +77,15 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
   const handleFinish = () => {
     const finalName = name.trim() || user.name || 'Người chơi';
+    const cleanPhone = phone.trim().replace(/[^0-9]/g, '');
+    if (cleanPhone && !isValidVietnamesePhone(cleanPhone)) {
+      alert('Số điện thoại không hợp lệ! Vui lòng nhập đúng số điện thoại di động Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08, 09).');
+      return;
+    }
     onSave({
       ...user,
       name: finalName,
-      phone: phone.trim(),
+      phone: cleanPhone ? formatPhoneNumber(cleanPhone) : '',
       experienceYears: experience,
       level: level,
       hasPlayedOtherCourts: hasPlayedOthers,
@@ -265,12 +271,18 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Nhập số điện thoại để Host liên hệ Zalo..."
+                    placeholder="VD: 0901234567..."
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-emerald-500 font-medium"
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Host sẽ liên hệ qua Zalo số này khi bạn bấm tham gia kèo.
-                  </p>
+                  {phone.trim() && !isValidVietnamesePhone(phone.replace(/[^0-9]/g, '')) ? (
+                    <p className="text-[11px] text-rose-500 mt-1 font-semibold flex items-center gap-1">
+                      ⚠️ SĐT chưa đúng định dạng di động 10 số (03, 05, 07, 08, 09).
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Host sẽ liên hệ qua Zalo số này khi bạn bấm tham gia kèo.
+                    </p>
+                  )}
                 </div>
 
                 <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center gap-3">

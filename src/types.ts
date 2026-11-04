@@ -67,12 +67,26 @@ export interface MatchPost {
   amenities?: string[];
   refundPolicy?: string;
   isUrgent?: boolean;
+  announcement?: string;
   bankInfo?: {
     bankName: string;
     accountNumber: string;
     accountName: string;
     depositAmount?: number;
   };
+}
+
+export function isValidVietnamesePhone(phone: string): boolean {
+  const clean = phone.replace(/\D/g, '');
+  return /^(03|05|07|08|09)\d{8}$/.test(clean);
+}
+
+export function formatPhoneNumber(phone: string): string {
+  const clean = phone.replace(/\D/g, '');
+  if (clean.length === 10) {
+    return `${clean.slice(0, 4)} ${clean.slice(4, 7)} ${clean.slice(7)}`;
+  }
+  return phone;
 }
 
 export interface UserProfile {

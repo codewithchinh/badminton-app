@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { MatchPost, UserProfile, SkillLevel } from './types';
-import { SKILL_LEVEL_SCORES } from './types';
+import { SKILL_LEVEL_SCORES, isValidVietnamesePhone, formatPhoneNumber } from './types';
 import { INITIAL_USER, MOCK_MATCHES } from './mockData';
 import { MatchCard } from './components/MatchCard';
 import { MatchDetailModal } from './components/MatchDetailModal';
@@ -53,6 +53,8 @@ export default function App() {
 
   // Join confirmation dialog
   const [confirmJoinMatch, setConfirmJoinMatch] = useState<MatchPost | null>(null);
+  const [joinPhoneInput, setJoinPhoneInput] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
 
   // Online / Offline monitor
   useEffect(() => {
@@ -661,6 +663,7 @@ export default function App() {
     if (alreadyJoined) {
       executeToggleJoin(matchId);
     } else {
+      setJoinPhoneInput(currentUser.phone || '');
       setConfirmJoinMatch(targetMatch);
     }
   };
@@ -786,9 +789,31 @@ export default function App() {
     }
   };
 
+  // Helper kiểm tra kèo đã kết thúc hay chưa (Bug 10 Fix)
+  const isMatchExpired = (m: MatchPost) => {
+    try {
+      const now = new Date();
+      let targetDate = new Date();
+      if (m.date === 'Ngày mai') {
+        targetDate.setDate(targetDate.getDate() + 1);
+      } else if (m.date.includes('/')) {
+        const parts = m.date.match(/(\d{1,2})\/(\d{1,2})/);
+        if (parts) {
+          targetDate.setDate(parseInt(parts[1], 10));
+          targetDate.setMonth(parseInt(parts[2], 10) - 1);
+        }
+      }
+      const [endHour, endMin] = m.endTime.split(':').map((n) => parseInt(n, 10));
+      targetDate.setHours(endHour, endMin, 0, 0);
+      return now.getTime() > targetDate.getTime();
+    } catch {
+      return false;
+    }
+  };
+
   // Filtered matches with Vietnamese normalization & Skill Level Score Range matching (Bug 1 Fix)
   const filteredMatches = useMemo(() => {
-    return matches.filter((m) => {
+    const list = matches.filter((m) => {
       if (activeTab === 'my-matches') {
         const isJoined = m.joinedPlayers.some((p) => p.userId === currentUser.id);
         if (!isJoined) return false;
@@ -866,6 +891,27 @@ export default function App() {
       }
 
       return true;
+    });
+
+    // Sắp xếp feed thông minh (Kèo đã qua giờ xếp cuối, kèo gấp xếp đầu)
+    return list.sort((a, b) => {
+      const expiredA = isMatchExpired(a);
+      const expiredB = isMatchExpired(b);
+      if (expiredA !== expiredB) {
+        return expiredA ? 1 : -1;
+      }
+
+      if (a.isUrgent !== b.isUrgent) {
+        return a.isUrgent ? -1 : 1;
+      }
+
+      const fullA = a.joinedPlayers.length >= a.totalSlots;
+      const fullB = b.joinedPlayers.length >= b.totalSlots;
+      if (fullA !== fullB) {
+        return fullA ? 1 : -1;
+      }
+
+      return 0;
     });
   }, [
     matches,
@@ -1741,6 +1787,26 @@ export default function App() {
                 </div>
               )}
             </div>
+
+            {/* Yêu cầu cập nhật SĐT nếu tài khoản chưa có (Bug 9 / Imp 1) */}
+            {!currentUser.phone && (
+              <div className="p-3 bg-emerald-50/80 rounded-2xl text-left border border-emerald-200/80 space-y-1.5">
+                <label className="text-[11px] font-bold text-emerald-950 block">
+                  Số điện thoại / Zalo của bạn <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={joinPhoneInput}
+                  onChange={(e) => setJoinPhoneInput(e.target.value)}
+                  placeholder="VD: 0901234567..."
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-emerald-300 text-xs text-slate-800 focus:outline-emerald-500 font-medium"
+                />
+                <span className="text-[10px] text-emerald-700 block">
+                  Host sẽ liên hệ qua Zalo số này để dặn dò giờ thi đấu.
+                </span>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
@@ -1751,14 +1817,33 @@ export default function App() {
               </button>
               <button
                 type="button"
-                onClick={() => {
+                disabled={isJoining}
+                onClick={async () => {
                   const mId = confirmJoinMatch.id;
+                  let activeUser = currentUser;
+
+                  if (!currentUser.phone) {
+                    const clean = joinPhoneInput.trim().replace(/[^0-9]/g, '');
+                    if (!isValidVietnamesePhone(clean)) {
+                      alert('Vui lòng nhập đúng số điện thoại di động Việt Nam (10 số, bắt đầu 03, 05, 07, 08, 09) để Host liên hệ Zalo!');
+                      return;
+                    }
+                    const formatted = formatPhoneNumber(clean);
+                    activeUser = { ...currentUser, phone: formatted };
+                    handleUpdateProfile({ phone: formatted });
+                  }
+
+                  setIsJoining(true);
                   setConfirmJoinMatch(null);
-                  executeToggleJoin(mId);
+                  try {
+                    await executeToggleJoin(mId, activeUser);
+                  } finally {
+                    setIsJoining(false);
+                  }
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 cursor-pointer disabled:opacity-50"
               >
-                Xác nhận giữ slot
+                {isJoining ? 'Đang vào...' : 'Xác nhận giữ slot'}
               </button>
             </div>
           </div>

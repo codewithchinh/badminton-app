@@ -151,6 +151,7 @@ export function toMatchPost(row: DbMatchRow): MatchPost {
     amenities: Array.isArray(extraMeta.amenities) ? extraMeta.amenities : [],
     refundPolicy: extraMeta.refundPolicy,
     isUrgent: extraMeta.isUrgent,
+    announcement: extraMeta.announcement,
     bankInfo: extraMeta.bankInfo,
   };
 }
@@ -164,6 +165,7 @@ export function toDbRow(match: MatchPost): DbMatchRow {
   if (match.bankInfo) metaToSave.bankInfo = match.bankInfo;
   if (match.refundPolicy) metaToSave.refundPolicy = match.refundPolicy;
   if (typeof match.isUrgent === 'boolean') metaToSave.isUrgent = match.isUrgent;
+  if (match.announcement) metaToSave.announcement = match.announcement;
   if (match.updatedAt) metaToSave.updatedAt = match.updatedAt;
 
   if (Object.keys(metaToSave).length > 0) {

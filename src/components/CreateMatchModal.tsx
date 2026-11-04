@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { MatchPost, SkillLevel, UserProfile } from '../types';
+import { SKILL_LEVEL_SCORES } from '../types';
 import { X, Plus, Sparkles, Image as ImageIcon, Check, MapPin, Navigation, Upload, Camera, Trash2, QrCode } from 'lucide-react';
 import { getDefaultCourtImage } from '../supabase';
 import { searchCourts, type CourtInfo } from '../data/badmintonCourts';
@@ -119,6 +120,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const [depositAmount, setDepositAmount] = useState<number>(30000);
   const [refundPolicy, setRefundPolicy] = useState('Hoàn cọc 100% nếu báo trước 2 tiếng');
   const [isUrgent, setIsUrgent] = useState(false);
+  const [announcement, setAnnouncement] = useState('');
 
   // Sync state when opening or when editMatch / cloneMatch is passed
   useEffect(() => {
@@ -138,14 +140,15 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       setTotalSlots(sourceMatch.totalSlots || 8);
       setMinLevel(sourceMatch.minLevel || 'TB Yếu');
       setMaxLevel(sourceMatch.maxLevel || 'TB+');
-      setPriceMale(sourceMatch.priceMale || 60000);
-      setPriceFemale(sourceMatch.priceFemale || 40000);
+      setPriceMale(sourceMatch.priceMale ?? 60000);
+      setPriceFemale(sourceMatch.priceFemale ?? 40000);
       setCoverImage(sourceMatch.coverImage || '');
       setNotes(sourceMatch.notes || '');
       setTargetGender(sourceMatch.targetGender || 'all');
       setSelectedAmenities(sourceMatch.amenities && sourceMatch.amenities.length > 0 ? sourceMatch.amenities : ['Thảm chuẩn thi đấu', 'Nước đá miễn phí']);
       setRefundPolicy(sourceMatch.refundPolicy || 'Hoàn cọc 100% nếu báo trước 2 tiếng');
       setIsUrgent(cloneMatch ? false : (sourceMatch.isUrgent || false));
+      setAnnouncement(sourceMatch.announcement || '');
       if (sourceMatch.bankInfo) {
         setHasBankInfo(true);
         setBankName(sourceMatch.bankInfo.bankName || 'MBBank');
@@ -181,11 +184,30 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       setSelectedAmenities(['Thảm chuẩn thi đấu', 'Nước đá miễn phí']);
       setRefundPolicy('Hoàn cọc 100% nếu báo trước 2 tiếng');
       setIsUrgent(false);
+      setAnnouncement('');
       setHasBankInfo(false);
-      setBankName('MBBank');
-      setAccountNumber('');
-      setAccountName('');
-      setDepositAmount(30000);
+
+      // Load remembered bank info if Host previously used one (Bug 10 Fix)
+      try {
+        const savedBank = localStorage.getItem('timvanglai_host_bank');
+        if (savedBank) {
+          const parsed = JSON.parse(savedBank);
+          setBankName(parsed.bankName || 'MBBank');
+          setAccountNumber(parsed.accountNumber || '');
+          setAccountName(parsed.accountName || '');
+          setDepositAmount(parsed.depositAmount || 30000);
+        } else {
+          setBankName('MBBank');
+          setAccountNumber('');
+          setAccountName('');
+          setDepositAmount(30000);
+        }
+      } catch {
+        setBankName('MBBank');
+        setAccountNumber('');
+        setAccountName('');
+        setDepositAmount(30000);
+      }
     }
   }, [isOpen, editMatch, cloneMatch]);
 
@@ -292,6 +314,16 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       return;
     }
 
+    if (startTime >= endTime) {
+      alert('Giờ bắt đầu phải trước giờ kết thúc!');
+      return;
+    }
+
+    if ((SKILL_LEVEL_SCORES[minLevel] ?? 0) > (SKILL_LEVEL_SCORES[maxLevel] ?? 9)) {
+      alert('Trình độ tối thiểu không được cao hơn trình độ tối đa!');
+      return;
+    }
+
     const finalImage = coverImage.trim() || getDefaultCourtImage(courtName.trim(), district);
 
     const finalMapsUrl =
@@ -306,6 +338,20 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       accountName: accountName.trim().toUpperCase(),
       depositAmount: Number(depositAmount) || 30000,
     } : undefined;
+
+    if (hasBankInfo && accountNumber.trim()) {
+      try {
+        localStorage.setItem(
+          'timvanglai_host_bank',
+          JSON.stringify({
+            bankName,
+            accountNumber: accountNumber.trim(),
+            accountName: accountName.trim().toUpperCase(),
+            depositAmount: Number(depositAmount) || 30000,
+          })
+        );
+      } catch {}
+    }
 
     if (editMatch && onUpdate) {
       const updatedMatch: MatchPost = {
@@ -322,8 +368,8 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
         totalSlots: Number(totalSlots) || 8,
         minLevel,
         maxLevel,
-        priceMale: Number(priceMale) || 60000,
-        priceFemale: Number(priceFemale) || 40000,
+        priceMale: Number(priceMale) || 0,
+        priceFemale: Number(priceFemale) || 0,
         coverImage: finalImage,
         googleMapsUrl: finalMapsUrl,
         notes: notes.trim(),
@@ -332,6 +378,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
         bankInfo: bankData,
         refundPolicy: hasBankInfo ? refundPolicy : undefined,
         isUrgent,
+        announcement: announcement.trim() || undefined,
         updatedAt: new Date().toISOString(),
       };
       onUpdate(updatedMatch);
@@ -365,8 +412,8 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       ],
       minLevel,
       maxLevel,
-      priceMale: Number(priceMale) || 60000,
-      priceFemale: Number(priceFemale) || 40000,
+      priceMale: Number(priceMale) || 0,
+      priceFemale: Number(priceFemale) || 0,
       hostId: currentUser.id,
       hostName: currentUser.name,
       hostAvatar: currentUser.avatar,
@@ -381,6 +428,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       amenities: selectedAmenities,
       refundPolicy: hasBankInfo ? refundPolicy : undefined,
       isUrgent,
+      announcement: announcement.trim() || undefined,
       bankInfo: bankData,
     };
 
@@ -738,6 +786,15 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500"
               />
             </div>
+
+            {/* Dự toán doanh thu cho Host (Point 20) */}
+            <div className="col-span-2 py-2 px-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
+              <span>Doanh thu dự kiến ({totalSlots} slot):</span>
+              <span className="font-bold text-emerald-700 text-xs">
+                ~{(Number(priceMale) * Math.ceil(totalSlots * 0.6) + Number(priceFemale) * Math.floor(totalSlots * 0.4)).toLocaleString('vi-VN')} đ
+                <span className="text-[10px] text-slate-400 font-normal ml-1">(tính theo 60% nam + 40% nữ)</span>
+              </span>
+            </div>
           </div>
 
           {/* Đối tượng tuyển */}
@@ -1024,6 +1081,21 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="VD: Bao nước đá, nhóm hòa đồng vui vẻ, có tủ đồ gửi..."
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500"
+            />
+          </div>
+
+          {/* Ghim thông báo khẩn từ Host (Point 13) */}
+          <div className="pt-2 border-t border-slate-100">
+            <label className="text-xs font-bold text-amber-800 flex items-center justify-between mb-1">
+              <span>📢 Ghim thông báo khẩn của Host (Tùy chọn)</span>
+              <span className="text-[10px] text-amber-600 font-normal">Hiển thị banner nổi bật cho người chơi</span>
+            </label>
+            <input
+              type="text"
+              value={announcement}
+              onChange={(e) => setAnnouncement(e.target.value)}
+              placeholder="VD: Đổi qua sân số 5 do sân 3 bảo trì, mang theo 2 áo sáng/tối nhé..."
+              className="w-full px-3 py-2 rounded-xl border border-amber-200 bg-amber-50/40 text-xs focus:outline-amber-500 text-amber-950 font-medium"
             />
           </div>
 
