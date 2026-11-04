@@ -95,7 +95,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             </div>
 
             <div className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-medium">
-              {match.courtCount} sân ({match.courtNumber}) • {match.shuttleType}
+              {match.courtCount} sân{match.courtNumber ? ` (${match.courtNumber})` : ''} • {match.shuttleType}
             </div>
           </div>
 

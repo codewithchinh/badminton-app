@@ -165,7 +165,9 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               <div className="flex items-center gap-4 pt-2 border-t border-slate-200/60 text-xs text-slate-600">
                 <div>
                   <span className="text-slate-400">Số sân:</span>{' '}
-                  <span className="font-bold text-slate-800">{match.courtNumber} ({match.courtCount} sân)</span>
+                  <span className="font-bold text-slate-800">
+                    {match.courtNumber ? `${match.courtNumber} (${match.courtCount} sân)` : `${match.courtCount} sân (Host sẽ báo sau)`}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-400">Cầu:</span>{' '}

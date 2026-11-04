@@ -91,7 +91,8 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const [date, setDate] = useState('Hôm nay');
   const [startTime, setStartTime] = useState('18:00');
   const [endTime, setEndTime] = useState('20:00');
-  const [courtNumber, setCourtNumber] = useState('Sân 3');
+  const [courtNumber, setCourtNumber] = useState('');
+  const [availableCourtsCount, setAvailableCourtsCount] = useState<number>(18);
   const [shuttleType, setShuttleType] = useState('VinaStar Đỏ');
   const [totalSlots, setTotalSlots] = useState(8);
   const [minLevel, setMinLevel] = useState<SkillLevel>('TB Yếu');
@@ -181,6 +182,11 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
     setAddress(court.address);
     setDistrict(court.district);
     setGoogleMapsUrl(court.googleMapsUrl);
+    if (court.presetCourtCount) {
+      setAvailableCourtsCount(court.presetCourtCount);
+    } else {
+      setAvailableCourtsCount(18);
+    }
     if (court.image) {
       setCoverImage(court.image);
     }
@@ -326,6 +332,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                       setSuggestions([]);
                       setShowSuggestions(false);
                       setGoogleMapsUrl('');
+                      setAvailableCourtsCount(18);
                     }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
                     title="Xóa để chọn lại"
@@ -422,14 +429,61 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Số sân</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    Số sân <span className="text-slate-400 font-normal">(Tùy chọn)</span>
+                  </label>
+                  {courtNumber && (
+                    <button
+                      type="button"
+                      onClick={() => setCourtNumber('')}
+                      className="text-[10px] text-slate-400 hover:text-rose-500 font-medium"
+                    >
+                      Để trống
+                    </button>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={courtNumber}
                   onChange={(e) => setCourtNumber(e.target.value)}
-                  placeholder="VD: Sân 3"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-emerald-500"
+                  placeholder="VD: Sân 3 (để trống nếu chưa đặt)"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-emerald-500 bg-white"
                 />
+                {/* Thanh cuộn chọn nhanh số sân */}
+                <div className="mt-1.5 flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setCourtNumber('')}
+                    className={`px-2 py-1 rounded-lg text-xs shrink-0 font-medium transition-all ${
+                      !courtNumber
+                        ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                    title="Để trống nếu chưa đặt trước sân"
+                  >
+                    Chưa đặt
+                  </button>
+                  {Array.from({ length: availableCourtsCount }, (_, i) => i + 1).map((num) => {
+                    const courtStr = `Sân ${num}`;
+                    const isSelected = courtNumber === courtStr;
+                    return (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setCourtNumber(courtStr)}
+                        className={`w-7 h-7 rounded-lg text-xs flex items-center justify-center shrink-0 font-medium transition-all ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white font-bold shadow-sm ring-2 ring-emerald-300'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                        title={`Chọn Sân ${num}`}
+                      >
+                        {num}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

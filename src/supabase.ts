@@ -113,7 +113,7 @@ export function toMatchPost(row: DbMatchRow): MatchPost {
     date: row.date,
     startTime: row.start_time,
     endTime: row.end_time,
-    courtNumber: row.court_number || 'Sân 1',
+    courtNumber: row.court_number || '',
     courtCount: row.court_count || 1,
     shuttleType: row.shuttle_type || 'VinaStar Đỏ',
     totalSlots: row.total_slots,
