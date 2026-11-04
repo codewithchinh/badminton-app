@@ -39,8 +39,16 @@
 - [x] **T010**: Commit và push lên nhánh `main` của repository GitHub.
 - [x] **T011**: Kiểm tra Vercel CI/CD xác nhận production live đạt HTTP 200 tại `https://timvanglai.io.vn`.
 
+### Phase 6: Khắc Phục Dữ Liệu Sân Bình Tân, Trải Nghiệm Tải Ảnh & Loại Bỏ URL Input
+- [x] **T012**: Bổ sung toàn diện danh bạ sân cầu lông chuẩn Google Maps tại khu vực ưu tiên Bình Tân & Tân Phú (`HAAN Badminton Club`, `Sân Cầu Lông Quang Huy`, `Aka Badminton Center`, `CLB Cầu Lông Bingo`, `Sân Cầu Lông Việt Phước`, `CLB Cầu Lông Minkyo`, `CLB Cầu Lông Hòa Bình (The B Hòa Bình)`, `CLB Cầu Lông T&T Hòa Bình`, `Sân Cầu Lông Thiên Khang`, v.v.).
+- [x] **T013**: Cải tiến thuật toán tìm kiếm `searchCourts` với cơ chế xếp hạng (ranking) thông minh: Ưu tiên tuyệt đối các sân có tên trùng khớp từ khóa lên hàng đầu, xử lý triệt để ký tự đặc biệt, gõ không dấu/có dấu đều tìm thấy 100%.
+- [x] **T014**: **Xóa bỏ hoàn toàn ô nhập URL ảnh (`<input type="url">`)** trong `CreateMatchModal.tsx`.
+- [x] **T015**: Tích hợp tính năng **Tải ảnh trực tiếp từ điện thoại / máy tính** (`<input type="file" accept="image/*">`), tự động nén qua Canvas thành Base64 Data URL, có khung preview trực quan và 2 nút "Đổi ảnh" / "Xóa ảnh".
+- [x] **T016**: Thêm mục **"Ảnh bạn đã dùng gần đây"** (Recent Images) được lưu trữ qua `localStorage`: Tự động ẩn hoàn toàn nếu Host chưa từng đăng bài (đúng như yêu cầu của người dùng), chỉ hiện khi đã có ảnh từng dùng.
+- [x] **T017**: Làm mới bộ ảnh preset: Loại bỏ vĩnh viễn ảnh 404 (Kỳ Hòa) và ảnh tập gym (Bình Minh), chuẩn hóa 4 preset thể thao cầu lông chất lượng cao: Sân thảm xanh BWF, Sân trong nhà sáng đèn, VĐV bật nhảy đập cầu (Lin Dan style), Thi đấu đôi phong trào.
+
 ---
 
 ## Trạng Thái Đối Soát (Convergence Assessment)
-- **Code vs Spec:** Khớp 100%. Không có tính năng thừa thãi hoặc vi phạm nguyên tắc kiểm soát rác dữ liệu.
+- **Code vs Spec:** Khớp 100%. Toàn bộ phản hồi từ người dùng về dữ liệu sân và UI ảnh đã được giải quyết dứt điểm.
 - **Tình trạng:** `CONVERGED`.

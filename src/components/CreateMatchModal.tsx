@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { MatchPost, SkillLevel, UserProfile } from '../types';
-import { X, Plus, Sparkles, Image as ImageIcon, Check, MapPin, Navigation } from 'lucide-react';
+import { X, Plus, Sparkles, Image as ImageIcon, Check, MapPin, Navigation, Upload, Camera, Trash2 } from 'lucide-react';
 import { COURT_PRESET_IMAGES, getDefaultCourtImage } from '../supabase';
 import { searchCourts, type CourtInfo } from '../data/badmintonCourts';
 
@@ -94,9 +94,64 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const [priceMale, setPriceMale] = useState(60000);
   const [priceFemale, setPriceFemale] = useState(40000);
   const [coverImage, setCoverImage] = useState('');
+  const [recentImages, setRecentImages] = useState<string[]>([]);
   const [notes, setNotes] = useState('Sân vui vẻ giao lưu, có nước đá miễn phí. Đến đúng giờ nhé cả nhà!');
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load recently used images by Host if any
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('timvanglai_host_recent_images');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setRecentImages(parsed);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
   if (!isOpen) return null;
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn một tệp hình ảnh hợp lệ!');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 800;
+        let width = img.width;
+        let height = img.height;
+        if (width > height && width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else if (height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setCoverImage(compressedDataUrl);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   const handleCourtNameChange = (val: string) => {
     setCourtName(val);
@@ -132,6 +187,18 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
     if (!courtName.trim()) {
       alert('Vui lòng nhập tên sân cầu!');
       return;
+    }
+
+    // Save uploaded or selected image to Host's recent images
+    const chosenImage = coverImage.trim() || getDefaultCourtImage(courtName.trim(), district);
+    if (chosenImage) {
+      try {
+        const updatedRecent = [chosenImage, ...recentImages.filter((img) => img !== chosenImage)].slice(0, 4);
+        setRecentImages(updatedRecent);
+        localStorage.setItem('timvanglai_host_recent_images', JSON.stringify(updatedRecent));
+      } catch (err) {
+        // ignore
+      }
     }
 
     const finalMapsUrl =
@@ -471,59 +538,147 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
             </div>
           </div>
 
-          {/* Ảnh bìa sân cầu lông (Tùy chọn) */}
+          {/* Ảnh bìa sân cầu lông / ảnh nhóm */}
           <div className="pt-2 border-t border-slate-100">
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <ImageIcon className="w-4 h-4 text-emerald-600" />
-                Ảnh sân cầu lông (Tùy chọn)
+                Ảnh sân hoặc ảnh nhóm
               </label>
               <span className="text-[11px] text-slate-400 font-medium">Tự động gán nếu bỏ trống</span>
             </div>
 
-            {/* Gợi ý chọn ảnh mẫu 1 chạm */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
-              {COURT_PRESET_IMAGES.slice(0, 4).map((preset) => {
-                const isSelected = coverImage === preset.url;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => setCoverImage(isSelected ? '' : preset.url)}
-                    className={`relative rounded-xl overflow-hidden h-16 border-2 transition-all text-left group ${
-                      isSelected
-                        ? 'border-emerald-600 ring-2 ring-emerald-500/20'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <img
-                      src={preset.url}
-                      alt={preset.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black/40 flex items-end p-1.5">
-                      <span className="text-[10px] text-white font-semibold truncate leading-tight">
-                        {preset.name.split(' (')[0]}
-                      </span>
-                    </div>
-                    {isSelected && (
-                      <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center">
-                        <Check className="w-2.5 h-2.5" />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Hoặc nhập link ảnh tùy chỉnh */}
+            {/* Input file ẩn để chọn từ điện thoại / máy tính */}
             <input
-              type="url"
-              value={coverImage}
-              onChange={(e) => setCoverImage(e.target.value)}
-              placeholder="Hoặc dán link ảnh sân/ảnh nhóm của bạn..."
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500"
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileUpload}
             />
+
+            {/* Khung hiển thị ảnh đã chọn HOẶC Nút tải ảnh trực tiếp */}
+            {coverImage ? (
+              <div className="relative rounded-2xl overflow-hidden border border-slate-200 mb-3 bg-slate-900 shadow-sm">
+                <img
+                  src={coverImage}
+                  alt="Ảnh sân đã chọn"
+                  className="w-full h-40 object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end justify-between p-3">
+                  <div className="text-white text-xs font-medium truncate flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>Ảnh đã chọn sẵn sàng hiển thị</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-2.5 py-1.5 rounded-xl bg-white/95 hover:bg-white text-slate-800 text-[11px] font-bold shadow-md flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                      Đổi ảnh
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCoverImage('')}
+                      className="px-2.5 py-1.5 rounded-xl bg-rose-600/90 hover:bg-rose-600 text-white text-[11px] font-bold shadow-md flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Xóa
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-3 px-4 rounded-2xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/50 hover:bg-emerald-50 transition-all flex items-center justify-center gap-2.5 text-emerald-700 font-bold text-xs cursor-pointer mb-3 group active:scale-[0.99]"
+              >
+                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Upload className="w-4 h-4 text-emerald-600" />
+                </div>
+                <span>Tải ảnh từ điện thoại / máy tính</span>
+              </button>
+            )}
+
+            {/* 1. Ảnh bạn đã từng đăng (Chỉ hiện khi Host đã có ảnh từng dùng) */}
+            {recentImages.length > 0 && (
+              <div className="mb-3">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                  Ảnh bạn đã dùng gần đây
+                </span>
+                <div className="grid grid-cols-4 gap-2">
+                  {recentImages.slice(0, 4).map((imgUrl, idx) => {
+                    const isSelected = coverImage === imgUrl;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setCoverImage(isSelected ? '' : imgUrl)}
+                        className={`relative rounded-xl overflow-hidden h-14 border-2 transition-all cursor-pointer group ${
+                          isSelected
+                            ? 'border-emerald-600 ring-2 ring-emerald-500/30'
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <img
+                          src={imgUrl}
+                          alt="Ảnh đã dùng"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                        {isSelected && (
+                          <div className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+                            <Check className="w-2 h-2" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 2. Ảnh mẫu thể thao cầu lông chuẩn */}
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                Hoặc chọn ảnh mẫu sân & VĐV Lin Dan
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {COURT_PRESET_IMAGES.slice(0, 4).map((preset) => {
+                  const isSelected = coverImage === preset.url;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => setCoverImage(isSelected ? '' : preset.url)}
+                      className={`relative rounded-xl overflow-hidden h-16 border-2 transition-all text-left cursor-pointer group ${
+                        isSelected
+                          ? 'border-emerald-600 ring-2 ring-emerald-500/30'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <img
+                        src={preset.url}
+                        alt={preset.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/40 flex items-end p-1.5">
+                        <span className="text-[10px] text-white font-semibold truncate leading-tight">
+                          {preset.name.split(' (')[0]}
+                        </span>
+                      </div>
+                      {isSelected && (
+                        <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+                          <Check className="w-2.5 h-2.5" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* Ghi chú */}

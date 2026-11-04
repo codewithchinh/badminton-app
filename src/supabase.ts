@@ -43,41 +43,35 @@ export interface DbMatchRow {
 
 export const COURT_PRESET_IMAGES: { id: string; name: string; url: string; matchKey: string }[] = [
   {
-    id: 'viettel',
-    name: 'Sân Viettel (Tân Bình)',
+    id: 'tham-xanh',
+    name: 'Sân Thảm Xanh Chuẩn BWF',
     matchKey: 'viettel',
     url: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=800&auto=format&fit=crop&q=80',
   },
   {
-    id: 'ky-hoa',
-    name: 'Sân Kỳ Hòa (Quận 10)',
+    id: 'san-trong-nha',
+    name: 'Sân Cầu Lông Trong Nhà Sáng Đèn',
     matchKey: 'kỳ hòa',
-    url: 'https://images.unsplash.com/photo-1613918431703-81816e87f654?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'khang-an',
-    name: 'Sân Khang An (Gò Vấp)',
-    matchKey: 'khang an',
     url: 'https://images.unsplash.com/photo-1521537634581-0dced2fee2ef?w=800&auto=format&fit=crop&q=80',
   },
   {
-    id: 'binh-minh',
-    name: 'Sân Bình Minh (Bình Thạnh)',
-    matchKey: 'bình minh',
-    url: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800&auto=format&fit=crop&q=80',
+    id: 'dap-cau',
+    name: 'VĐV Smash Đỉnh Cao (Lin Dan)',
+    matchKey: 'khang an',
+    url: 'https://images.unsplash.com/photo-1599474924187-334a4ae5bd3c?w=800&auto=format&fit=crop&q=80',
   },
   {
-    id: 'standard',
-    name: 'Sân Tiêu Chuẩn Thảm Xanh',
-    matchKey: 'standard',
-    url: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80',
+    id: 'thi-dau',
+    name: 'Thi Đấu Đôi Phong Trào',
+    matchKey: 'bình minh',
+    url: 'https://images.unsplash.com/photo-1622163642998-1ea32b0bbc67?w=800&auto=format&fit=crop&q=80',
   },
 ];
 
 export function getDefaultCourtImage(courtName: string, district?: string): string {
   const normalized = (courtName + ' ' + (district || '')).toLowerCase();
   for (const preset of COURT_PRESET_IMAGES) {
-    if (preset.matchKey !== 'standard' && normalized.includes(preset.matchKey)) {
+    if (preset.matchKey && normalized.includes(preset.matchKey)) {
       return preset.url;
     }
   }
@@ -93,10 +87,10 @@ export function toMatchPost(row: DbMatchRow): MatchPost {
   let googleMapsUrl = '';
   let cleanNotes = row.notes || '';
 
-  const imgMatch = cleanNotes.match(/\[IMG:(https?:\/\/[^\]]+)\]/);
+  const imgMatch = cleanNotes.match(/\[IMG:([^\]]+)\]/);
   if (imgMatch) {
     coverImage = imgMatch[1];
-    cleanNotes = cleanNotes.replace(/\[IMG:https?:\/\/[^\]]+\]/, '').trim();
+    cleanNotes = cleanNotes.replace(/\[IMG:[^\]]+\]/, '').trim();
   } else {
     coverImage = getDefaultCourtImage(row.court_name, row.district);
   }
@@ -145,7 +139,7 @@ export function toDbRow(match: MatchPost): DbMatchRow {
   if (match.googleMapsUrl && match.googleMapsUrl.startsWith('http')) {
     formattedNotes = `[MAP:${match.googleMapsUrl}] ${formattedNotes}`.trim();
   }
-  if (match.coverImage && match.coverImage.startsWith('http')) {
+  if (match.coverImage && (match.coverImage.startsWith('http') || match.coverImage.startsWith('data:image/'))) {
     formattedNotes = `[IMG:${match.coverImage}] ${formattedNotes}`.trim();
   }
 
