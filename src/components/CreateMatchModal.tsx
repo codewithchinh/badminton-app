@@ -50,7 +50,55 @@ const SKILL_LEVELS: SkillLevel[] = [
   'Tốt (Ăn tập)',
 ];
 
-const SHUTTLE_TYPES = ['VinaStar Đỏ', 'VinaStar Xanh', 'Hải Yến Đỏ', 'Thành Công 77', 'Victor', 'Ba Sao'];
+interface ShuttleGroup {
+  group: string;
+  items: string[];
+}
+
+export const SHUTTLE_GROUPS: ShuttleGroup[] = [
+  {
+    group: '⭐ VinaStar (Vua phong trào miền Nam & TP.HCM)',
+    items: ['VinaStar Đỏ (Tốc độ 50/51)', 'VinaStar Xanh', 'VinaStar Bạc'],
+  },
+  {
+    group: '⭐ Hải Yến (Thương hiệu quốc dân lâu đời)',
+    items: ['Hải Yến Đỏ', 'Hải Yến Xanh', 'Hải Yến S70', 'Hải Yến S80', 'Hải Yến S90 (Thi đấu)'],
+  },
+  {
+    group: '⭐ Thành Công (Đặc sản miền Bắc & toàn quốc)',
+    items: ['Thành Công 77', 'Thành Công Xanh (Nội địa)', 'Thành Công Đỏ'],
+  },
+  {
+    group: '⭐ Ba Sao & Sao Mai (Cầu chuẩn miền Bắc & sinh viên)',
+    items: ['Ba Sao Pro-X', 'Ba Sao Bạc', 'Sao Mai'],
+  },
+  {
+    group: '⭐ Phong trào giá tốt (VNB, 88, Taro, Lê Quang, LHT)',
+    items: ['Cầu 88', 'VNB M01', 'VNB V90', 'Taro', 'Lê Quang', 'LHT'],
+  },
+  {
+    group: '⭐ Nhập khẩu cao cấp & Thi đấu (Yonex, Victor, RSL, Li-Ning...)',
+    items: [
+      'Yonex Aerosensa (AS-30 / AS-50)',
+      'Victor Lark 5',
+      'Victor Champion',
+      'Victor Master',
+      'RSL Tourney No.1',
+      'RSL Classic',
+      'RSL Silver',
+      'Lining A60 / A+62',
+      'Kumpoo Match',
+      'Kawasaki Team',
+      'Pro Ace',
+    ],
+  },
+  {
+    group: '⭐ Cầu nhựa siêu bền (Đánh ngoài trời & Mới tập)',
+    items: ['Yonex Mavis 350 (Cầu nhựa)'],
+  },
+];
+
+export const ALL_SHUTTLE_TYPES = SHUTTLE_GROUPS.flatMap((g) => g.items);
 
 const ALL_AMENITIES = [
   'Thảm chuẩn thi đấu',
@@ -101,7 +149,9 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const [courtNumber, setCourtNumber] = useState('');
   const [isCustomCourt, setIsCustomCourt] = useState(false);
   const [availableCourtsCount, setAvailableCourtsCount] = useState<number>(18);
-  const [shuttleType, setShuttleType] = useState('VinaStar Đỏ');
+  const [shuttleType, setShuttleType] = useState('VinaStar Đỏ (Tốc độ 50/51)');
+  const [isCustomShuttle, setIsCustomShuttle] = useState(false);
+  const [customShuttle, setCustomShuttle] = useState('');
   const [totalSlots, setTotalSlots] = useState(8);
   const [minLevel, setMinLevel] = useState<SkillLevel>('TB Yếu');
   const [maxLevel, setMaxLevel] = useState<SkillLevel>('TB+');
@@ -136,7 +186,21 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       setStartTime(sourceMatch.startTime || '18:00');
       setEndTime(sourceMatch.endTime || '20:00');
       setCourtNumber(sourceMatch.courtNumber || '');
-      setShuttleType(sourceMatch.shuttleType || 'VinaStar Đỏ');
+      if (sourceMatch.shuttleType) {
+        if (ALL_SHUTTLE_TYPES.includes(sourceMatch.shuttleType)) {
+          setShuttleType(sourceMatch.shuttleType);
+          setIsCustomShuttle(false);
+          setCustomShuttle('');
+        } else {
+          setShuttleType('custom');
+          setIsCustomShuttle(true);
+          setCustomShuttle(sourceMatch.shuttleType);
+        }
+      } else {
+        setShuttleType('VinaStar Đỏ (Tốc độ 50/51)');
+        setIsCustomShuttle(false);
+        setCustomShuttle('');
+      }
       setTotalSlots(sourceMatch.totalSlots || 8);
       setMinLevel(sourceMatch.minLevel || 'TB Yếu');
       setMaxLevel(sourceMatch.maxLevel || 'TB+');
@@ -172,7 +236,9 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       setEndTime('20:00');
       setCourtNumber('');
       setIsCustomCourt(false);
-      setShuttleType('VinaStar Đỏ');
+      setShuttleType('VinaStar Đỏ (Tốc độ 50/51)');
+      setIsCustomShuttle(false);
+      setCustomShuttle('');
       setTotalSlots(8);
       setMinLevel('TB Yếu');
       setMaxLevel('TB+');
@@ -353,6 +419,8 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       } catch {}
     }
 
+    const finalShuttleType = isCustomShuttle ? (customShuttle.trim() || 'VinaStar Đỏ (Tốc độ 50/51)') : shuttleType;
+
     if (editMatch && onUpdate) {
       const updatedMatch: MatchPost = {
         ...editMatch,
@@ -364,7 +432,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
         startTime,
         endTime,
         courtNumber,
-        shuttleType,
+        shuttleType: finalShuttleType,
         totalSlots: Number(totalSlots) || 8,
         minLevel,
         maxLevel,
@@ -397,7 +465,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       endTime,
       courtNumber,
       courtCount: 1,
-      shuttleType,
+      shuttleType: finalShuttleType,
       totalSlots: Number(totalSlots) || 8,
       joinedPlayers: [
         {
@@ -700,16 +768,40 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">Loại cầu sử dụng</label>
               <select
-                value={shuttleType}
-                onChange={(e) => setShuttleType(e.target.value)}
+                value={isCustomShuttle ? 'custom' : shuttleType}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === 'custom') {
+                    setIsCustomShuttle(true);
+                  } else {
+                    setIsCustomShuttle(false);
+                    setShuttleType(val);
+                  }
+                }}
                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500 bg-white"
               >
-                {SHUTTLE_TYPES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
+                {SHUTTLE_GROUPS.map((grp) => (
+                  <optgroup key={grp.group} label={grp.group}>
+                    {grp.items.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
+                <option value="custom">Khác (Tự nhập loại cầu...)</option>
               </select>
+
+              {isCustomShuttle && (
+                <input
+                  type="text"
+                  autoFocus
+                  value={customShuttle}
+                  onChange={(e) => setCustomShuttle(e.target.value)}
+                  placeholder="VD: Cầu Lining D9, Cầu tự làm..."
+                  className="w-full mt-2 px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500 bg-white font-medium"
+                />
+              )}
             </div>
 
             <div>
