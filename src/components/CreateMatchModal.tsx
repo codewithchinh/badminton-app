@@ -163,7 +163,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
     if (val.trim().length >= 1) {
       const results = searchCourts(val);
       setSuggestions(results);
-      setShowSuggestions(results.length > 0);
+      setShowSuggestions(true);
     } else {
       setSuggestions([]);
       setShowSuggestions(false);
@@ -326,11 +326,11 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
               </div>
 
               {/* Suggestions Dropdown */}
-              {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-40 divide-y divide-slate-100 max-h-60 overflow-y-auto">
+              {showSuggestions && (suggestions.length > 0 || (courtName.trim().length >= 2 && !selectedCourtName)) && (
+                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-40 divide-y divide-slate-100 max-h-64 overflow-y-auto">
                   <div className="px-3 py-1.5 bg-slate-50 text-[10px] font-bold text-slate-500 flex items-center justify-between">
-                    <span>SÂN GỢI Ý TRÊN GOOGLE MAPS</span>
-                    <span className="text-emerald-700">Bấm để tự điền 1-chạm</span>
+                    <span>DANH BẠ SÂN GOOGLE MAPS ({suggestions.length} sân khớp)</span>
+                    <span className="text-emerald-700">Tự điền 1-chạm</span>
                   </div>
                   {suggestions.map((court) => (
                     <button
@@ -340,7 +340,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                         e.preventDefault();
                         handleSelectCourt(court);
                       }}
-                      className="w-full px-3 py-2.5 text-left hover:bg-emerald-50/80 transition-colors flex items-start gap-2.5 group"
+                      className="w-full px-3 py-2.5 text-left hover:bg-emerald-50/80 transition-colors flex items-start gap-2.5 group cursor-pointer"
                     >
                       <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
                       <div className="min-w-0 flex-1">
@@ -356,6 +356,33 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                       </span>
                     </button>
                   ))}
+
+                  {/* Mục tiện ích: Nếu sân gõ vào chưa có trong danh bạ hoặc muốn dùng tên riêng */}
+                  {courtName.trim().length >= 2 && !selectedCourtName && (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setSelectedCourtName(courtName.trim());
+                        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          `${courtName.trim()} ${address.trim()} ${district}`.trim()
+                        )}`;
+                        setGoogleMapsUrl(mapsLink);
+                        setShowSuggestions(false);
+                      }}
+                      className="w-full px-3 py-2.5 text-left bg-emerald-50/80 hover:bg-emerald-100 transition-colors flex items-center justify-between text-xs text-emerald-900 font-semibold cursor-pointer border-t border-emerald-100"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Navigation className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="truncate">
+                          Dùng tên sân: <strong>"{courtName}"</strong> (Tự tạo link Google Maps)
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-200/80 px-2 py-0.5 rounded-md shrink-0">
+                        Áp dụng
+                      </span>
+                    </button>
+                  )}
                 </div>
               )}
 
