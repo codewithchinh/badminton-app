@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { MatchPost, UserProfile } from '../types';
 import {
   X,
@@ -39,6 +39,19 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const remainingSlots = match.totalSlots - match.joinedPlayers.length;
   const isFull = remainingSlots <= 0;
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   const formatMoney = (amount: number) => {
     return amount.toLocaleString('vi-VN') + ' đ';
   };
@@ -61,7 +74,12 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const coverSrc = match.coverImage || getDefaultCourtImage(match.courtName, match.district);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4"
+    >
       <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in fade-in slide-in-from-bottom-6 duration-200">
         {/* Banner Cover Image */}
         <div className="relative h-44 sm:h-52 w-full overflow-hidden bg-slate-900 shrink-0">
@@ -71,7 +89,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
             className="w-full h-full object-cover"
             onError={(e) => {
               (e.target as HTMLImageElement).src =
-                'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80';
+                'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=800&auto=format&fit=crop&q=80';
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/40 pointer-events-none" />

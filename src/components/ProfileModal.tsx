@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { MatchPost, UserProfile } from '../types';
 import { X, Award, Phone, Calendar, RefreshCw } from 'lucide-react';
 
@@ -25,8 +25,22 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     m.joinedPlayers.some((p) => p.userId === user.id)
   );
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
+    >
       <div className="bg-white rounded-3xl w-full max-w-md max-h-[92vh] overflow-hidden shadow-2xl flex flex-col">
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white relative">

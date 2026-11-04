@@ -9,18 +9,18 @@ export interface CourtInfo {
 }
 
 export const BADMINTON_COURTS: CourtInfo[] = [
-  // ==================== TÂN PHÚ (ƯU TIÊN HÀNG ĐẦU - 28 SÂN) ====================
+  // ==================== TÂN PHÚ (ƯU TIÊN HÀNG ĐẦU - 42 SÂN TOÀN DIỆN) ====================
   {
     id: 'tp-minkyo',
-    name: 'CLB Cầu Lông Minkyo (Sân Cầu Lông Minkyo)',
+    name: 'Sân Cầu Lông Minkyo (CLB Cầu Lông Minkyo)',
     address: '262/26/2 Lũy Bán Bích, P. Hòa Thạnh',
     district: 'Tân Phú',
-    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=CLB+Cầu+Lông+Minkyo+Lũy+Bán+Bích+Tân+Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=CLB+Cầu+Lông+Minkyo+262+Lũy+Bán+Bích+Tân+Phú',
     presetCourtCount: 4,
   },
   {
     id: 'tp-tuanhue',
-    name: 'CLB Cầu Lông Tuấn Huệ',
+    name: 'Sân Cầu Lông Tuấn Huệ (CLB Cầu Lông Tuấn Huệ)',
     address: '262/13 Lũy Bán Bích, P. Hòa Thạnh',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=CLB+Cầu+Lông+Tuấn+Huệ+262+13+Lũy+Bán+Bích+Tân+Phú',
@@ -28,7 +28,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-dbadminton',
-    name: 'Sân Cầu Lông D-Badminton',
+    name: 'Sân Cầu Lông D-Badminton (CLB D-Badminton Lũy Bán Bích)',
     address: '450 Lũy Bán Bích, P. Hòa Thạnh',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+D-Badminton+450+Lũy+Bán+Bích+Tân+Phú',
@@ -36,7 +36,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-jardin',
-    name: 'Sân Cầu Lông Jardin',
+    name: 'Sân Cầu Lông Jardin (CLB Cầu Lông Jardin)',
     address: '501/9 Lũy Bán Bích, P. Phú Thạnh',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Jardin+501+9+Lũy+Bán+Bích+Tân+Phú',
@@ -44,23 +44,23 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-abc',
-    name: 'Sân Cầu Lông ABC',
-    address: '710/53/2 Lũy Bán Bích, P. Tân Thạnh',
+    name: 'Sân Cầu Lông ABC (CLB Cầu Lông ABC Lũy Bán Bích)',
+    address: '710/53/2 Lũy Bán Bích (53/2 Lũy Bán Bích), P. Tân Thạnh',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+ABC+Lũy+Bán+Bích+Tân+Phú',
     presetCourtCount: 3,
   },
   {
     id: 'tp-phuthinh',
-    name: 'Sân Cầu Lông Phú Thịnh',
+    name: 'Sân Cầu Lông Phú Thịnh (CLB Cầu Lông Phú Thịnh)',
     address: '23C Lũy Bán Bích, P. Tân Thới Hòa',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Phú+Thịnh+23C+Lũy+Bán+Bích+Tân+Phú',
-    presetCourtCount: 4,
+    presetCourtCount: 6,
   },
   {
     id: 'tp-tanphuc',
-    name: 'Sân Cầu Lông Tấn Phúc',
+    name: 'Sân Cầu Lông Tấn Phúc (CLB Cầu Lông Tấn Phúc)',
     address: '36/48 Huỳnh Thiện Lộc (118/22 Lũy Bán Bích), P. Hòa Thạnh',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Tấn+Phúc+Huỳnh+Thiện+Lộc+Tân+Phú',
@@ -68,7 +68,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-hoabinh',
-    name: 'CLB Cầu Lông Hòa Bình (The B Hòa Bình)',
+    name: 'Sân Cầu Lông Hòa Bình (CLB Cầu Lông The B Hòa Bình)',
     address: '314 - 316 Hòa Bình, P. Phú Thạnh (Giáp ranh Bình Tân, ngã 4 Bốn Xã, Lê Văn Quới)',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=CLB+Cầu+Lông+Hòa+Bình+316+Hòa+Bình+Tân+Phú',
@@ -76,7 +76,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-tthoabinh',
-    name: 'CLB Cầu Lông T&T Hòa Bình',
+    name: 'Sân Cầu Lông T&T Hòa Bình (CLB Cầu Lông T&T - TT Badminton)',
     address: '237/2/3 Hòa Bình, P. Hiệp Tân (Giáp ranh Bình Tân)',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=CLB+Cầu+Lông+TT+Hòa+Bình+237+Hòa+Bình',
@@ -84,7 +84,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-thienkhang',
-    name: 'Sân Cầu Lông Thiên Khang',
+    name: 'Sân Cầu Lông Thiên Khang (CLB Cầu Lông Thiên Khang Thoại Ngọc Hầu)',
     address: '369 Thoại Ngọc Hầu, P. Phú Thạnh (Giáp ranh Bình Tân, ngã 4 Bốn Xã, Lê Văn Quới)',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Thiên+Khang+369+Thoại+Ngọc+Hầu+Tân+Phú',
@@ -92,15 +92,15 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-thoainngochau',
-    name: 'Sân Cầu Lông Thoại Ngọc Hầu',
+    name: 'Sân Cầu Lông Thoại Ngọc Hầu (CLB Cầu Lông Thoại Ngọc Hầu 377)',
     address: '377 Thoại Ngọc Hầu, P. Hiệp Tân',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Thoại+Ngọc+Hầu+377+Thoại+Ngọc+Hầu+Tân+Phú',
-    presetCourtCount: 4,
+    presetCourtCount: 7,
   },
   {
     id: 'tp-nhomban',
-    name: 'Cụm Sân Cầu Lông & Pickleball Nhóm Bạn',
+    name: 'Sân Cầu Lông Nhóm Bạn (Cụm Sân Cầu Lông & Pickleball Nhóm Bạn)',
     address: '370 Thoại Ngọc Hầu, P. Phú Thạnh',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Nhóm+Bạn+370+Thoại+Ngọc+Hầu+Tân+Phú',
@@ -108,7 +108,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-dsport',
-    name: 'Sân Cầu Lông D-Sport Tân Phú',
+    name: 'Sân Cầu Lông D-Sport Tân Phú (CLB D-Sport Thoại Ngọc Hầu)',
     address: '62 Thoại Ngọc Hầu, P. Phú Thọ Hòa',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+D-Sport+Tân+Phú+Thoại+Ngọc+Hầu',
@@ -116,15 +116,15 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-thienvan1',
-    name: 'Sân Cầu Lông Thiên Vân (Cơ sở 1 Thoại Ngọc Hầu)',
-    address: '19/41 Thoại Ngọc Hầu, P. Hòa Thạnh',
+    name: 'Sân Cầu Lông Thiên Vân 1 (CLB Cầu Lông Thiên Vân - Hẻm 19 Thoại Ngọc Hầu)',
+    address: '19/41 Thoại Ngọc Hầu (19/57 Thoại Ngọc Hầu), P. Hòa Thạnh',
     district: 'Tân Phú',
-    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Thiên+Vân+19+41+Thoại+Ngọc+Hầu+Tân+Phú',
-    presetCourtCount: 5,
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Thiên+Vân+19+Thoại+Ngọc+Hầu+Tân+Phú',
+    presetCourtCount: 6,
   },
   {
     id: 'tp-thienvan2',
-    name: 'Sân Cầu Lông Thiên Vân (Cơ sở 2 Nguyễn Nghiêm)',
+    name: 'Sân Cầu Lông Thiên Vân 2 (CLB Cầu Lông Thiên Vân Nguyễn Nghiêm)',
     address: '57 Nguyễn Nghiêm, P. Phú Trung',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Thiên+Vân+57+Nguyễn+Nghiêm+Tân+Phú',
@@ -132,7 +132,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-celadon',
-    name: 'CLB Cầu Lông Celadon Sports Club',
+    name: 'Sân Cầu Lông Celadon (CLB Celadon Sports & Resort Club)',
     address: 'Số 2 Đường D2, Khu đô thị Celadon City, P. Sơn Kỳ',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=CLB+Cầu+Lông+Celadon+Sports+Resort+Club+Tân+Phú',
@@ -140,7 +140,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-tanviet',
-    name: 'Sân Cầu Lông Tân Việt',
+    name: 'Sân Cầu Lông Tân Việt (CLB Cầu Lông Tân Việt Bình Long)',
     address: '234 Bình Long, P. Phú Thạnh',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Tân+Việt+Bình+Long+Tân+Phú',
@@ -148,7 +148,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-hoangkim',
-    name: 'Sân Cầu Lông Hoàng Kim',
+    name: 'Sân Cầu Lông Hoàng Kim (CLB Cầu Lông Hoàng Kim)',
     address: '60 Nguyễn Háo Vĩnh (111 Kênh 19/5), P. Tân Quý',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Hoàng+Kim+Nguyễn+Háo+Vĩnh+Tân+Phú',
@@ -156,7 +156,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-daphico',
-    name: 'Sân Cầu Lông Dạ Phi Cơ',
+    name: 'Sân Cầu Lông Dạ Phi Cơ (CLB Cầu Lông Dạ Phi Cơ Phạm Ngọc Thảo)',
     address: '86 Phạm Ngọc Thảo, P. Tây Thạnh',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Dạ+Phi+Cơ+86+Phạm+Ngọc+Thảo+Tân+Phú',
@@ -164,7 +164,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-chelanvien',
-    name: 'Sân Cầu Lông Chế Lan Viên',
+    name: 'Sân Cầu Lông Chế Lan Viên (CLB Cầu Lông Chế Lan Viên)',
     address: '108 Chế Lan Viên, P. Tây Thạnh',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Chế+Lan+Viên+Tân+Phú',
@@ -172,7 +172,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-titan',
-    name: 'Sân Cầu Lông & Pickleball Titan',
+    name: 'Sân Cầu Lông & Pickleball Titan Chế Lan Viên',
     address: 'Đường Chế Lan Viên, P. Tây Thạnh',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Titan+Chế+Lan+Viên+Tân+Phú',
@@ -180,15 +180,15 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-taythanh',
-    name: 'Sân Cầu Lông Tây Thạnh',
-    address: 'Hẻm 30 Chế Lan Viên, P. Tây Thạnh',
+    name: 'Sân Cầu Lông Tây Thạnh (Hồ Bơi Tây Thạnh - Khu Thể Thao Tây Thạnh)',
+    address: '87 Chế Lan Viên & Dương Đức Hiền (Hẻm 30 Chế Lan Viên), P. Tây Thạnh',
     district: 'Tân Phú',
-    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Tây+Thạnh+Chế+Lan+Viên+Tân+Phú',
-    presetCourtCount: 4,
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Hồ+Bơi+Tây+Thạnh+Chế+Lan+Viên+Tân+Phú',
+    presetCourtCount: 9,
   },
   {
     id: 'tp-hbbadminton',
-    name: 'Sân Cầu Lông HB Badminton',
+    name: 'Sân Cầu Lông HB Badminton (CLB HB Badminton Dương Văn Dương)',
     address: '29D Dương Văn Dương, P. Tân Sơn Nhì',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+HB+Badminton+Dương+Văn+Dương+Tân+Phú',
@@ -204,7 +204,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-sc252',
-    name: 'Sân Cầu Lông SC252',
+    name: 'Sân Cầu Lông SC252 (CLB Cầu Lông Phan Anh)',
     address: '252/18AC Phan Anh, P. Hiệp Tân',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+SC252+Phan+Anh+Tân+Phú',
@@ -212,7 +212,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-vuonlai',
-    name: 'Sân Cầu Lông Vườn Lài',
+    name: 'Sân Cầu Lông Vườn Lài (CLB Cầu Lông Vườn Lài)',
     address: '124 Vườn Lài, P. Tân Thành',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Vườn+Lài+Tân+Phú',
@@ -220,7 +220,7 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-tanphuclub',
-    name: 'CLB Cầu Lông Tân Phú',
+    name: 'CLB Sân Cầu Lông Tân Phú',
     address: 'Huỳnh Văn Chính, P. Phú Trung',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=CLB+Cầu+Lông+Tân+Phú+Huỳnh+Văn+Chính',
@@ -228,11 +228,123 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
   {
     id: 'tp-phuthohoa',
-    name: 'Sân Cầu Lông Phú Thọ Hòa',
+    name: 'Sân Cầu Lông Phú Thọ Hòa (CLB Cầu Lông Lê Thúc Hoạch)',
     address: '110 Lê Thúc Hoạch, P. Phú Thọ Hòa',
     district: 'Tân Phú',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Lê+Thúc+Hoạch+Phú+Thọ+Hòa+Tân+Phú',
     presetCourtCount: 4,
+  },
+  {
+    id: 'tp-909truongchinh',
+    name: 'Sân Cầu Lông 909 Trường Chinh (CLB Cầu Lông Trường Chinh 909)',
+    address: '909/6 Trường Chinh, P. Tây Thạnh',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+909+Trường+Chinh+Tây+Thạnh+Tân+Phú',
+    presetCourtCount: 10,
+  },
+  {
+    id: 'tp-sdbadminton',
+    name: 'Sân Cầu Lông SD (SD Badminton Club Kênh 19/5)',
+    address: '93 Đường Kênh 19/5, P. Sơn Kỳ',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+SD+93+Kênh+19+5+Sơn+Kỳ+Tân+Phú',
+    presetCourtCount: 8,
+  },
+  {
+    id: 'tp-ecosport-godau',
+    name: 'Sân Cầu Lông Ecosport Gò Dầu (CLB Cầu Lông Ecosport)',
+    address: '185/22 Gò Dầu, P. Tân Quý (Phú Thọ Hòa)',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Ecosport+185+22+Gò+Dầu+Tân+Phú',
+    presetCourtCount: 8,
+  },
+  {
+    id: 'tp-ecosport-cachmang',
+    name: 'Sân Cầu Lông Ecosport Tân Phú (CLB Ecosport Cách Mạng)',
+    address: '15 Cách Mạng, P. Tân Sơn Nhì',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Ecosport+15+Cách+Mạng+Tân+Sơn+Nhì+Tân+Phú',
+    presetCourtCount: 7,
+  },
+  {
+    id: 'tp-sgb-vuonlai',
+    name: 'Sân Cầu Lông SGB Vườn Lài (CLB SGB Badminton Tân Hương)',
+    address: '218/20 Vườn Lài (Hẻm 49A Tân Hương), P. Phú Thọ Hòa (Tân Quý)',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+SGB+218+20+Vườn+Lài+Tân+Phú',
+    presetCourtCount: 10,
+  },
+  {
+    id: 'tp-ttc-badminton',
+    name: 'Sân Cầu Lông - Pickleball TTC (CLB Cầu Lông Titan TTC Lương Minh Nguyệt)',
+    address: '17/5/15 Lương Minh Nguyệt (Hẻm 58 Lũy Bán Bích), P. Tân Thới Hòa',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=CLB+Cầu+Lông+TTC+17+5+15+Lương+Minh+Nguyệt+Tân+Thới+Hòa+Tân+Phú',
+    presetCourtCount: 8,
+  },
+  {
+    id: 'tp-nguyentrongquyen',
+    name: 'Sân Cầu Lông Nguyễn Trọng Quyền (CLB Cầu Lông Nguyễn Trọng Quyền)',
+    address: 'Số 1 Nguyễn Trọng Quyền, P. Tân Thới Hòa',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Nguyễn+Trọng+Quyền+Tân+Thới+Hòa+Tân+Phú',
+    presetCourtCount: 12,
+  },
+  {
+    id: 'tp-lanminh',
+    name: 'Sân Cầu Lông Lan Minh (CLB Cầu Lông Lan Minh Tô Hiệu)',
+    address: '126 Tô Hiệu, P. Hiệp Tân',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=CLB+Cầu+Lông+Lan+Minh+126+Tô+Hiệu+Hiệp+Tân+Tân+Phú',
+    presetCourtCount: 6,
+  },
+  {
+    id: 'tp-bumbadminton',
+    name: 'Sân Cầu Lông Bum (Bum Badminton Kênh Tân Hóa)',
+    address: '47/6 Kênh Tân Hóa, P. Tân Thới Hòa',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Bum+Badminton+47+6+Kênh+Tân+Hóa+Tân+Phú',
+    presetCourtCount: 3,
+  },
+  {
+    id: 'tp-dhcongthuong',
+    name: 'Sân Cầu Lông ĐH Công Thương TP.HCM (HUIT - ĐH Công Nghiệp Thực Phẩm)',
+    address: '140 Lê Trọng Tấn & 86 Phạm Ngọc Thảo, P. Tây Thạnh',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Trường+Đại+Học+Công+Thương+Lê+Trọng+Tấn+Tân+Phú',
+    presetCourtCount: 4,
+  },
+  {
+    id: 'tp-doclap',
+    name: 'Sân Cầu Lông Độc Lập (CLB Cầu Lông Độc Lập)',
+    address: 'Đường Độc Lập, P. Tân Thành',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Độc+Lập+Tân+Thành+Tân+Phú',
+    presetCourtCount: 4,
+  },
+  {
+    id: 'tp-tanhuong',
+    name: 'Sân Cầu Lông Tân Hương (Chợ Tân Hương)',
+    address: 'Đường Tân Hương, P. Tân Quý',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Tân+Hương+Tân+Quý+Tân+Phú',
+    presetCourtCount: 4,
+  },
+  {
+    id: 'tp-bobaotanthang',
+    name: 'Sân Cầu Lông Bờ Bao Tân Thắng (Gần Aeon Mall Celadon)',
+    address: 'Đường Bờ Bao Tân Thắng, P. Sơn Kỳ',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Bờ+Bao+Tân+Thắng+Sơn+Kỳ+Tân+Phú',
+    presetCourtCount: 6,
+  },
+  {
+    id: 'tp-letrongtan',
+    name: 'Sân Cầu Lông Lê Trọng Tấn Tân Phú',
+    address: 'Đường Lê Trọng Tấn, P. Tây Thạnh',
+    district: 'Tân Phú',
+    googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Lê+Trọng+Tấn+Tân+Phú',
+    presetCourtCount: 6,
   },
 
   // ==================== BÌNH TÂN (ƯU TIÊN HÀNG ĐẦU - 23 SÂN) ====================
@@ -1042,33 +1154,72 @@ export function normalizeVietnamese(str: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[đĐ]/g, 'd')
+    .replace(/&/g, ' tt ')
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-// Hàm tìm kiếm sân theo từ khóa không dấu / có dấu và xếp hạng thông minh
+// Từ khóa loại hình sân chung (stop-words cho ngữ cảnh tìm kiếm sân cầu lông)
+const GENERIC_PREFIX_TOKENS = new Set(['san', 'clb', 'cau', 'long', 'badminton', 'club', 'o', 'tai', 'khu', 'cum']);
+
+// Hàm tìm kiếm sân theo từ khóa không dấu / có dấu và xếp hạng thông minh 100%
 export function searchCourts(query: string): CourtInfo[] {
   if (!query || query.trim().length === 0) return [];
 
   const cleanQuery = normalizeVietnamese(query);
-  const queryTokens = cleanQuery.split(' ').filter(Boolean);
+  const allTokens = cleanQuery.split(' ').filter(Boolean);
+  if (allTokens.length === 0) return [];
+
+  // Phân loại tokens: token đặc thù (tên riêng, số nhà, đường) vs token loại hình (sân, clb, cầu, lông)
+  const specificTokens = allTokens.filter((t) => !GENERIC_PREFIX_TOKENS.has(t));
+  // Nếu có token đặc thù (VD: 'celadon', 'minkyo', 'thoai ngoc hau'), bắt buộc phải khớp các token này
+  // Nếu người dùng chỉ gõ 'sân' hoặc 'clb', dùng allTokens
+  const requiredTokens = specificTokens.length > 0 ? specificTokens : allTokens;
 
   const matched = BADMINTON_COURTS.filter((court) => {
-    const rawMatch = normalizeVietnamese(court.name + ' ' + court.address + ' ' + court.district);
-    return queryTokens.every((token) => rawMatch.includes(token));
+    // Tự động gắn tiền tố đầy đủ 'sân clb câu lạc bộ badminton' để mọi biến thể tìm kiếm đều khớp
+    const rawCourtSearch = normalizeVietnamese(
+      `sân clb câu lạc bộ badminton ${court.name} ${court.address} ${court.district}`
+    );
+    return requiredTokens.every((token) => rawCourtSearch.includes(token));
   });
 
-  // Ranking: Ưu tiên sân mà tên khớp trực tiếp với từ khóa lên đầu
+  // Ranking thông minh theo độ tương đồng và vị trí xuất hiện
   return matched
-    .sort((a, b) => {
-      const aName = normalizeVietnamese(a.name);
-      const bName = normalizeVietnamese(b.name);
-      const aNameMatch = queryTokens.every((t) => aName.includes(t));
-      const bNameMatch = queryTokens.every((t) => bName.includes(t));
-      if (aNameMatch && !bNameMatch) return -1;
-      if (!aNameMatch && bNameMatch) return 1;
-      return 0;
+    .map((court) => {
+      const nameNorm = normalizeVietnamese(court.name);
+      const addrNorm = normalizeVietnamese(court.address);
+      let score = 0;
+
+      // 1. Khớp chính xác toàn bộ query không dấu trong tên sân
+      if (nameNorm.includes(cleanQuery)) {
+        score += 100;
+      }
+
+      // 2. Tên sân chứa toàn bộ requiredTokens
+      const allInName = requiredTokens.every((t) => nameNorm.includes(t));
+      if (allInName) {
+        score += 60;
+      }
+
+      // 3. Tên sân bắt đầu bằng cụm từ tìm kiếm
+      if (nameNorm.startsWith(cleanQuery)) {
+        score += 40;
+      }
+
+      // 4. Khớp trong địa chỉ chi tiết (tên đường, số nhà, phường)
+      if (addrNorm.includes(cleanQuery)) {
+        score += 30;
+      }
+
+      // 5. Ưu tiên số lượng tokens khớp trong tên sân
+      const matchedTokensInName = requiredTokens.filter((t) => nameNorm.includes(t)).length;
+      score += matchedTokensInName * 10;
+
+      return { court, score };
     })
-    .slice(0, 10);
+    .sort((a, b) => b.score - a.score)
+    .map((item) => item.court)
+    .slice(0, 15);
 }

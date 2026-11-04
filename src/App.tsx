@@ -149,6 +149,15 @@ export default function App() {
     closeModalWithHash('#profile', () => setIsProfileOpen(false));
   };
 
+  const handleOpenOnboarding = () => {
+    setIsOnboardingOpen(true);
+    openModalWithHash('#onboarding', { modal: 'onboarding' });
+  };
+
+  const handleCloseOnboarding = () => {
+    closeModalWithHash('#onboarding', () => setIsOnboardingOpen(false));
+  };
+
   // Listen to browser Back button & popstate events
   useEffect(() => {
     const handlePopState = () => {
@@ -193,6 +202,13 @@ export default function App() {
         setIsProfileOpen(true);
       } else {
         setIsProfileOpen(false);
+      }
+
+      // 6. Onboarding Modal
+      if (hash === '#onboarding') {
+        setIsOnboardingOpen(true);
+      } else {
+        setIsOnboardingOpen(false);
       }
     };
 
@@ -1233,9 +1249,9 @@ export default function App() {
         user={currentUser}
         onSave={(updated) => {
           handleSaveUser(updated);
-          setIsOnboardingOpen(false);
+          handleCloseOnboarding();
         }}
-        onClose={() => setIsOnboardingOpen(false)}
+        onClose={handleCloseOnboarding}
       />
 
       <ProfileModal
@@ -1245,7 +1261,7 @@ export default function App() {
         onClose={handleCloseProfile}
         onRetakeSurvey={() => {
           handleCloseProfile();
-          setIsOnboardingOpen(true);
+          handleOpenOnboarding();
         }}
         onSelectMatch={handleOpenMatchDetail}
       />

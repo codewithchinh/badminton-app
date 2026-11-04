@@ -47,6 +47,15 @@
 - [x] **T016**: Thêm mục **"Ảnh bạn đã dùng gần đây"** (Recent Images) được lưu trữ qua `localStorage`: Tự động ẩn hoàn toàn nếu Host chưa từng đăng bài (đúng như yêu cầu của người dùng), chỉ hiện khi đã có ảnh từng dùng.
 - [x] **T017**: Làm mới bộ ảnh preset: Loại bỏ vĩnh viễn ảnh 404 (Kỳ Hòa) và ảnh tập gym (Bình Minh), chuẩn hóa 4 preset thể thao cầu lông chất lượng cao: Sân thảm xanh BWF, Sân trong nhà sáng đèn, VĐV bật nhảy đập cầu (Lin Dan style), Thi đấu đôi phong trào.
 
+### Phase 7: Khắc Phục Triệt Để Nút Back Điện Thoại & Quét Toàn Diện 42 Sân Tân Phú
+- [x] **T018**: Xử lý triệt để nút Back của điện thoại di động & cử chỉ vuốt trên tất cả các modal (`App.tsx`, `MatchDetailModal.tsx`, `CreateMatchModal.tsx`, `AuthModal.tsx`, `ProfileModal.tsx`, `OnboardingModal.tsx`):
+  - Lắng nghe sự kiện `popstate` đóng modal an toàn, giữ người dùng ở lại trang chủ `timvanglai.io.vn`.
+  - Hỗ trợ đóng modal khi bấm phím Escape và khi click vào vùng mờ (backdrop) bên ngoài khung modal.
+- [x] **T019**: Loại bỏ 100% hình ảnh phòng tập gym nâng tạ (`photo-1534438327276`) và ảnh hỏng khỏi toàn bộ codebase (`MatchCard.tsx`, `MatchDetailModal.tsx`, `mockData.ts`, `supabase.ts`). Fallback mặc định về ảnh sân thảm thi đấu sắc nét.
+- [x] **T020**: Nâng cấp danh bạ sân Tân Phú lên 42 sân chuẩn Google Maps (tổng danh bạ 140 sân): Bổ sung Sân 909 Trường Chinh, SD Badminton Club Kênh 19/5, Ecosport Gò Dầu, Ecosport Cách Mạng, SGB Vườn Lài, TTC Lương Minh Nguyệt, Nguyễn Trọng Quyền, Lan Minh Tô Hiệu, Bum Kênh Tân Hóa, Hồ Bơi Tây Thạnh, ĐH Công Thương (HUIT), Sân Thiên Vân Hẻm 19 Thoại Ngọc Hầu (19/41 & 19/57)...
+- [x] **T021**: Nâng cấp thuật toán `searchCourts`: Tự động nhận diện token stop-words loại hình (`sân`, `clb`, `cầu lông`, `badminton`), chuẩn hóa tên có cả "Sân" và "CLB", hỗ trợ tìm theo số nhà, tên đường, hẻm, tên thương hiệu không phân biệt có/không dấu.
+- [x] **T022**: Kiểm thử tự động 46 test cases tìm kiếm đạt 100% tỷ lệ đỗ (Pass rate: 100%), build production thành công 0 lỗi.
+
 ---
 
 ## Trạng Thái Đối Soát (Convergence Assessment)

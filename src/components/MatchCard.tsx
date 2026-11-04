@@ -41,7 +41,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
           loading="lazy"
           onError={(e) => {
             (e.target as HTMLImageElement).src =
-              'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80';
+              'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=800&auto=format&fit=crop&q=80';
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
