@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { MatchPost, SkillLevel, UserProfile } from '../types';
 import { X, Plus, Sparkles, Image as ImageIcon, Check, MapPin, Navigation } from 'lucide-react';
 import { COURT_PRESET_IMAGES, getDefaultCourtImage } from '../supabase';
@@ -58,8 +58,31 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const [district, setDistrict] = useState('Tân Phú');
   const [address, setAddress] = useState('');
   const [googleMapsUrl, setGoogleMapsUrl] = useState('');
+  const [selectedCourtName, setSelectedCourtName] = useState('');
   const [suggestions, setSuggestions] = useState<CourtInfo[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const autocompleteRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (autocompleteRef.current && !autocompleteRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   const [date, setDate] = useState('Hôm nay');
   const [startTime, setStartTime] = useState('18:00');
   const [endTime, setEndTime] = useState('20:00');
@@ -77,6 +100,11 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
 
   const handleCourtNameChange = (val: string) => {
     setCourtName(val);
+    // Nếu người dùng sửa khác với tên sân đã chọn từ gợi ý, hủy liên kết Google Maps cũ
+    if (selectedCourtName && val.trim() !== selectedCourtName) {
+      setGoogleMapsUrl('');
+      setSelectedCourtName('');
+    }
     if (val.trim().length >= 1) {
       const results = searchCourts(val);
       setSuggestions(results);
@@ -89,6 +117,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
 
   const handleSelectCourt = (court: CourtInfo) => {
     setCourtName(court.name);
+    setSelectedCourtName(court.name);
     setAddress(court.address);
     setDistrict(court.district);
     setGoogleMapsUrl(court.googleMapsUrl);
@@ -189,7 +218,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
             </div>
 
             {/* Tên sân cầu lông kèm Autocomplete */}
-            <div className="relative">
+            <div className="relative" ref={autocompleteRef}>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
                   Tên sân cầu lông <span className="text-rose-500">*</span>
@@ -216,11 +245,13 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                     type="button"
                     onClick={() => {
                       setCourtName('');
+                      setSelectedCourtName('');
                       setSuggestions([]);
                       setShowSuggestions(false);
                       setGoogleMapsUrl('');
                     }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                    title="Xóa để chọn lại"
                   >
                     ✕
                   </button>
@@ -238,7 +269,10 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                     <button
                       key={court.id}
                       type="button"
-                      onClick={() => handleSelectCourt(court)}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleSelectCourt(court);
+                      }}
                       className="w-full px-3 py-2.5 text-left hover:bg-emerald-50/80 transition-colors flex items-start gap-2.5 group"
                     >
                       <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />

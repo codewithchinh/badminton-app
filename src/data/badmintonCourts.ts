@@ -313,21 +313,25 @@ export const BADMINTON_COURTS: CourtInfo[] = [
   },
 ];
 
+// Hàm chuẩn hóa tiếng Việt: xóa dấu thanh, mũ, và chuyển đ/Đ thành d
+export function normalizeVietnamese(str: string): string {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .trim();
+}
+
 // Hàm tìm kiếm sân theo từ khóa không dấu / có dấu
 export function searchCourts(query: string): CourtInfo[] {
   if (!query || query.trim().length === 0) return [];
 
-  const clean = query
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
+  const cleanQuery = normalizeVietnamese(query);
 
   return BADMINTON_COURTS.filter((court) => {
-    const rawMatch = (court.name + ' ' + court.address + ' ' + court.district)
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-    return rawMatch.includes(clean);
+    const rawMatch = normalizeVietnamese(court.name + ' ' + court.address + ' ' + court.district);
+    return rawMatch.includes(cleanQuery);
   }).slice(0, 6);
 }

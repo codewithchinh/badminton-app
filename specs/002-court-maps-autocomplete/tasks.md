@@ -30,8 +30,13 @@
 
 ### Phase 5: Kiểm Thử Chất Lượng & Triển Khai
 - [x] **T008**: Chạy `npm run build` (`tsc -b && vite build`) xác nhận 0 lỗi TypeScript và bundle đóng gói chuẩn xác.
-- [x] **T009**: Commit (`8213822`) và push lên nhánh `main` của repository GitHub.
-- [x] **T010**: Kiểm tra Vercel CI/CD xác nhận production live đạt HTTP 200 tại `https://timvanglai.io.vn`.
+- [x] **T009**: Tự rà soát kiểm thử (Self-Audit & Quality Fixes):
+  - Khắc phục lỗi chuẩn hóa chữ `đ`/`Đ` trong tìm kiếm tiếng Việt không dấu (`src/data/badmintonCourts.ts`).
+  - Bổ sung Click Outside và phím Escape để tự đóng dropdown gợi ý (`CreateMatchModal.tsx`).
+  - Khắc phục lỗi lệch link Maps: tự động reset link Maps khi Host thay đổi tên sân sau khi chọn (`CreateMatchModal.tsx`).
+  - Tối ưu `min-w-0 flex-1 break-words` chống tràn layout nút "Chỉ đường" trên màn hình điện thoại nhỏ (`MatchDetailModal.tsx`).
+- [x] **T010**: Commit và push lên nhánh `main` của repository GitHub.
+- [x] **T011**: Kiểm tra Vercel CI/CD xác nhận production live đạt HTTP 200 tại `https://timvanglai.io.vn`.
 
 ---
 
