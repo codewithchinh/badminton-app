@@ -86,6 +86,17 @@ export function toMatchPost(row: DbMatchRow): MatchPost {
   let coverImage = '';
   let googleMapsUrl = '';
   let cleanNotes = row.notes || '';
+  let extraMeta: any = {};
+
+  const metaMatch = cleanNotes.match(/\[META:([^\]]+)\]/);
+  if (metaMatch) {
+    try {
+      extraMeta = JSON.parse(decodeURIComponent(metaMatch[1]));
+      cleanNotes = cleanNotes.replace(/\[META:[^\]]+\]/, '').trim();
+    } catch (e) {
+      // ignore
+    }
+  }
 
   const imgMatch = cleanNotes.match(/\[IMG:([^\]]+)\]/);
   if (imgMatch) {
@@ -131,11 +142,25 @@ export function toMatchPost(row: DbMatchRow): MatchPost {
     googleMapsUrl,
     notes: cleanNotes,
     createdAt: row.created_at,
+    status: extraMeta.status || 'active',
+    targetGender: extraMeta.targetGender || 'all',
+    amenities: Array.isArray(extraMeta.amenities) ? extraMeta.amenities : [],
+    bankInfo: extraMeta.bankInfo,
   };
 }
 
 export function toDbRow(match: MatchPost): DbMatchRow {
   let formattedNotes = match.notes || '';
+  const metaToSave: any = {};
+  if (match.status) metaToSave.status = match.status;
+  if (match.targetGender) metaToSave.targetGender = match.targetGender;
+  if (match.amenities && match.amenities.length > 0) metaToSave.amenities = match.amenities;
+  if (match.bankInfo) metaToSave.bankInfo = match.bankInfo;
+
+  if (Object.keys(metaToSave).length > 0) {
+    formattedNotes = `[META:${encodeURIComponent(JSON.stringify(metaToSave))}] ${formattedNotes}`.trim();
+  }
+
   if (match.googleMapsUrl && match.googleMapsUrl.startsWith('http')) {
     formattedNotes = `[MAP:${match.googleMapsUrl}] ${formattedNotes}`.trim();
   }

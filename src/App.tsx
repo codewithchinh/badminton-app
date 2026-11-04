@@ -9,6 +9,7 @@ import { ProfileModal } from './components/ProfileModal';
 import { AuthModal } from './components/AuthModal';
 import { ResetPasswordModal } from './components/ResetPasswordModal';
 import { supabase, toMatchPost, toDbRow, type DbMatchRow } from './supabase';
+import { normalizeVietnamese } from './data/badmintonCourts';
 import {
   Search,
   Plus,
@@ -24,6 +25,8 @@ import {
   LogOut,
   AlertTriangle,
   X,
+  ArrowUp,
+  RotateCcw,
 } from 'lucide-react';
 
 export default function App() {
@@ -39,23 +42,112 @@ export default function App() {
   // Modals state
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingMatch, setEditingMatch] = useState<MatchPost | null>(null);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
 
+  // Join confirmation dialog
+  const [confirmJoinMatch, setConfirmJoinMatch] = useState<MatchPost | null>(null);
+
+  // Bookmarks state (persisted to localStorage)
+  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('timvanglai_bookmarks');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handleToggleBookmark = (matchId: string) => {
+    setBookmarkedIds((prev) => {
+      const updated = prev.includes(matchId)
+        ? prev.filter((id) => id !== matchId)
+        : [...prev, matchId];
+      try {
+        localStorage.setItem('timvanglai_bookmarks', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  // Back to top floating button
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 350);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Active Bottom Tab on mobile: 'feed' | 'my-matches' | 'profile'
   const [activeTab, setActiveTab] = useState<'feed' | 'my-matches' | 'profile'>('feed');
 
-  // Filters
+  // Filters state with preferred district memory
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDistrict, setSelectedDistrict] = useState('Tất cả');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>(() => {
+    try {
+      return localStorage.getItem('timvanglai_preferred_district') || 'Tất cả';
+    } catch {
+      return 'Tất cả';
+    }
+  });
   const [selectedLevel, setSelectedLevel] = useState('Tất cả');
   const [selectedDate, setSelectedDate] = useState('Tất cả');
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<'Tất cả' | 'morning' | 'afternoon' | 'evening'>('Tất cả');
+  const [selectedPriceRange, setSelectedPriceRange] = useState<'Tất cả' | 'under50' | '50to80' | 'above80'>('Tất cả');
   const [onlyAvailableSlots, setOnlyAvailableSlots] = useState(false);
 
-  const districts = ['Tất cả', 'Tân Phú', 'Bình Tân', 'Tân Bình', 'Thủ Đức', 'Quận 2', 'Quận 7', 'Quận 10', 'Gò Vấp', 'Bình Thạnh', 'Phú Nhuận'];
-  const dates = ['Tất cả', 'Hôm nay', 'Ngày mai', 'Chủ Nhật'];
+  const handleSelectDistrict = (d: string) => {
+    setSelectedDistrict(d);
+    try {
+      localStorage.setItem('timvanglai_preferred_district', d);
+    } catch {}
+  };
+
+  const districts = [
+    'Tất cả',
+    'Tân Phú',
+    'Bình Tân',
+    'Tân Bình',
+    'Thủ Đức',
+    'Quận 2',
+    'Quận 7',
+    'Quận 10',
+    'Gò Vấp',
+    'Bình Thạnh',
+    'Phú Nhuận',
+    'Quận 1',
+    'Quận 3',
+    'Quận 5',
+    'Quận 6',
+    'Quận 8',
+    'Quận 11',
+    'Quận 12',
+    'Bình Chánh',
+    'Hóc Môn',
+  ];
+
+  // Dynamic 7-day upcoming date options
+  const upcomingDateOptions = useMemo(() => {
+    const opts = ['Tất cả', 'Hôm nay', 'Ngày mai'];
+    const dayNames = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+    const now = new Date();
+    for (let i = 2; i < 7; i++) {
+      const d = new Date(now);
+      d.setDate(now.getDate() + i);
+      opts.push(`${dayNames[d.getDay()]} (${d.getDate()}/${d.getMonth() + 1})`);
+    }
+    return opts;
+  }, []);
+
   const levels = ['Tất cả', 'Hợp trình của tôi', 'Newbie', 'Yếu', 'Trung Bình', 'Khá (Bán chuyên)'];
 
   // Count active filters
@@ -64,15 +156,19 @@ export default function App() {
     if (selectedDistrict !== 'Tất cả') count++;
     if (selectedLevel !== 'Tất cả') count++;
     if (selectedDate !== 'Tất cả') count++;
+    if (selectedTimeSlot !== 'Tất cả') count++;
+    if (selectedPriceRange !== 'Tất cả') count++;
     if (onlyAvailableSlots) count++;
     return count;
-  }, [selectedDistrict, selectedLevel, selectedDate, onlyAvailableSlots]);
+  }, [selectedDistrict, selectedLevel, selectedDate, selectedTimeSlot, selectedPriceRange, onlyAvailableSlots]);
 
   // Reset all filters
   const handleResetFilters = () => {
-    setSelectedDistrict('Tất cả');
+    handleSelectDistrict('Tất cả');
     setSelectedLevel('Tất cả');
     setSelectedDate('Tất cả');
+    setSelectedTimeSlot('Tất cả');
+    setSelectedPriceRange('Tất cả');
     setOnlyAvailableSlots(false);
     setSearchQuery('');
   };
@@ -109,13 +205,23 @@ export default function App() {
     if (!session) {
       handleOpenAuth();
     } else {
+      setEditingMatch(null);
       setIsCreateOpen(true);
       openModalWithHash('#create', { modal: 'create-match' });
     }
   };
 
+  const handleEditMatch = (match: MatchPost) => {
+    setEditingMatch(match);
+    setIsCreateOpen(true);
+    openModalWithHash('#create', { modal: 'edit-match', matchId: match.id });
+  };
+
   const handleCloseCreateMatch = () => {
-    closeModalWithHash('#create', () => setIsCreateOpen(false));
+    closeModalWithHash('#create', () => {
+      setIsCreateOpen(false);
+      setEditingMatch(null);
+    });
   };
 
   const handleOpenMobileFilter = () => {
@@ -163,7 +269,6 @@ export default function App() {
     const handlePopState = () => {
       const hash = window.location.hash;
 
-      // 1. Match Detail Modal
       if (hash.startsWith('#match-')) {
         const matchId = hash.replace('#match-', '');
         const target = matches.find((m) => m.id === matchId);
@@ -176,35 +281,30 @@ export default function App() {
         setSelectedMatch(null);
       }
 
-      // 2. Create Match Modal
       if (hash === '#create') {
         setIsCreateOpen(true);
       } else {
         setIsCreateOpen(false);
       }
 
-      // 3. Mobile Filter Drawer
       if (hash === '#filter') {
         setIsMobileFilterOpen(true);
       } else {
         setIsMobileFilterOpen(false);
       }
 
-      // 4. Auth Modal
       if (hash === '#auth') {
         setIsAuthOpen(true);
       } else {
         setIsAuthOpen(false);
       }
 
-      // 5. Profile Modal
       if (hash === '#profile') {
         setIsProfileOpen(true);
       } else {
         setIsProfileOpen(false);
       }
 
-      // 6. Onboarding Modal
       if (hash === '#onboarding') {
         setIsOnboardingOpen(true);
       } else {
@@ -212,7 +312,6 @@ export default function App() {
       }
     };
 
-    // Check on initial load
     if (window.location.hash) {
       handlePopState();
     }
@@ -228,7 +327,6 @@ export default function App() {
     const meta = user.user_metadata || {};
     const identityData = user.identities?.[0]?.identity_data || {};
 
-    // Specific hydration for confirmed user to guarantee seamless cross-device state
     const isKnownAccount = user.email === 'bachinh@gmail.com';
     const userLevel = meta.level || (isKnownAccount ? 'TB Yếu' : null);
     const userPhone = meta.phone || '';
@@ -238,7 +336,6 @@ export default function App() {
       : (isKnownAccount ? true : false);
     const isOnboarded = !!(meta.is_onboarded || meta.level || isKnownAccount);
 
-    // Auto-detect real name from Google OAuth metadata, email metadata, or email prefix
     const realName =
       meta.full_name ||
       meta.name ||
@@ -267,7 +364,6 @@ export default function App() {
 
     setCurrentUser(updatedProfile);
 
-    // Persist verified user profile to Supabase Cloud Auth metadata if missing
     if ((isKnownAccount && !meta.is_onboarded) || (userLevel && !meta.level)) {
       supabase.auth
         .updateUser({
@@ -283,11 +379,19 @@ export default function App() {
         .catch(console.warn);
     }
 
-    // Only prompt onboarding if user has NEVER completed it on any device!
     if (!isOnboarded) {
       setIsOnboardingOpen(true);
     } else {
       setIsOnboardingOpen(false);
+    }
+
+    // Recover pending join after login (Bug 7)
+    const pendingMatchId = sessionStorage.getItem('timvanglai_pending_join');
+    if (pendingMatchId) {
+      sessionStorage.removeItem('timvanglai_pending_join');
+      setTimeout(() => {
+        executeToggleJoin(pendingMatchId, updatedProfile);
+      }, 400);
     }
   };
 
@@ -296,7 +400,6 @@ export default function App() {
     setCurrentUser(updated);
     setIsOnboardingOpen(false);
 
-    // Persist to Supabase Cloud User Metadata (syncs across Phone, Laptop, and all devices)
     try {
       await supabase.auth.updateUser({
         data: {
@@ -310,6 +413,22 @@ export default function App() {
       });
     } catch (err) {
       console.error('Could not sync profile to Supabase cloud metadata:', err);
+    }
+  };
+
+  // Update profile from ProfileModal
+  const handleUpdateProfile = async (updatedFields: Partial<UserProfile>) => {
+    const updated = { ...currentUser, ...updatedFields };
+    setCurrentUser(updated);
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          full_name: updated.name,
+          phone: updated.phone,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to update user profile:', err);
     }
   };
 
@@ -340,7 +459,6 @@ export default function App() {
 
   // Check auth session on load & handle OAuth code exchange
   useEffect(() => {
-    // 1. Check for errors or recovery hash in URL
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const err = urlParams.get('error_description') || hashParams.get('error_description');
@@ -352,7 +470,6 @@ export default function App() {
       setIsResetPasswordOpen(true);
     }
 
-    // 2. Check for PKCE authorization code in URL
     const code = urlParams.get('code');
     if (code) {
       supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
@@ -362,13 +479,11 @@ export default function App() {
         } else if (data.session?.user) {
           setSession(data.session);
           handleUserLoggedIn(data.session.user);
-          // Clean the code from URL
           window.history.replaceState({}, document.title, window.location.pathname);
         }
       });
     }
 
-    // 3. Unified Auth state listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
@@ -454,21 +569,16 @@ export default function App() {
     };
   }, []);
 
-  // Handle Instant Join / Leave (Requires login)
-  const handleToggleJoin = async (matchId: string) => {
-    if (!session) {
-      setIsAuthOpen(true);
-      return;
-    }
-
+  // Helper to execute Join without opening confirmation popup
+  const executeToggleJoin = async (matchId: string, userToJoin = currentUser) => {
     const targetMatch = matches.find((m) => m.id === matchId);
     if (!targetMatch) return;
 
-    const alreadyJoined = targetMatch.joinedPlayers.some((p) => p.userId === currentUser.id);
+    const alreadyJoined = targetMatch.joinedPlayers.some((p) => p.userId === userToJoin.id);
 
     let updatedPlayers: any[];
     if (alreadyJoined) {
-      updatedPlayers = targetMatch.joinedPlayers.filter((p) => p.userId !== currentUser.id);
+      updatedPlayers = targetMatch.joinedPlayers.filter((p) => p.userId !== userToJoin.id);
     } else {
       if (targetMatch.joinedPlayers.length >= targetMatch.totalSlots) {
         alert('Kèo này vừa đủ người rồi!');
@@ -477,11 +587,11 @@ export default function App() {
       updatedPlayers = [
         ...targetMatch.joinedPlayers,
         {
-          userId: currentUser.id,
-          name: currentUser.name,
-          avatar: currentUser.avatar,
-          level: currentUser.level,
-          phone: currentUser.phone,
+          userId: userToJoin.id,
+          name: userToJoin.name,
+          avatar: userToJoin.avatar,
+          level: userToJoin.level,
+          phone: userToJoin.phone,
           joinedAt: 'Vừa xong',
         },
       ];
@@ -498,6 +608,28 @@ export default function App() {
         .eq('id', matchId);
     } catch (e) {
       console.error('Failed to sync join to Supabase:', e);
+    }
+  };
+
+  // Handle Instant Join / Leave (With Confirmation dialog to prevent misclicks)
+  const handleToggleJoin = async (matchId: string) => {
+    if (!session) {
+      sessionStorage.setItem('timvanglai_pending_join', matchId);
+      setIsAuthOpen(true);
+      return;
+    }
+
+    const targetMatch = matches.find((m) => m.id === matchId);
+    if (!targetMatch) return;
+
+    const alreadyJoined = targetMatch.joinedPlayers.some((p) => p.userId === currentUser.id);
+
+    if (alreadyJoined) {
+      // Direct cancel
+      executeToggleJoin(matchId);
+    } else {
+      // Show confirmation dialog before locking slot
+      setConfirmJoinMatch(targetMatch);
     }
   };
 
@@ -524,6 +656,68 @@ export default function App() {
     }
   };
 
+  // Host locks 1 offline guest slot
+  const handleAddGuest = async (matchId: string) => {
+    const targetMatch = matches.find((m) => m.id === matchId);
+    if (!targetMatch) return;
+    if (targetMatch.joinedPlayers.length >= targetMatch.totalSlots) {
+      alert('Kèo đã đủ người, không thể khóa thêm slot!');
+      return;
+    }
+
+    const guestCount = targetMatch.joinedPlayers.filter((p) => p.name.includes('Khách')).length + 1;
+    const guestPlayer = {
+      userId: `guest-${Date.now()}`,
+      name: `Khách ngoài #${guestCount}`,
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+      level: targetMatch.minLevel,
+      phone: '',
+      joinedAt: 'Vừa xong',
+    };
+
+    const updatedPlayers = [...targetMatch.joinedPlayers, guestPlayer];
+    const updatedMatch = { ...targetMatch, joinedPlayers: updatedPlayers };
+
+    setMatches((prev) => prev.map((m) => (m.id === matchId ? updatedMatch : m)));
+    if (selectedMatch?.id === matchId) setSelectedMatch(updatedMatch);
+
+    try {
+      await supabase
+        .from('matches')
+        .update({ joined_players: updatedPlayers })
+        .eq('id', matchId);
+    } catch (e) {
+      console.error('Failed to add guest to Supabase:', e);
+    }
+  };
+
+  // Host updates match
+  const handleUpdateMatch = async (updatedMatch: MatchPost) => {
+    setMatches((prev) => prev.map((m) => (m.id === updatedMatch.id ? updatedMatch : m)));
+    setSelectedMatch(updatedMatch);
+
+    try {
+      await supabase.from('matches').update(toDbRow(updatedMatch)).eq('id', updatedMatch.id);
+    } catch (e) {
+      console.error('Failed to update match on Supabase:', e);
+    }
+  };
+
+  // Host deletes match
+  const handleDeleteMatch = async (matchId: string) => {
+    setMatches((prev) => prev.filter((m) => m.id !== matchId));
+    if (selectedMatch?.id === matchId) {
+      setSelectedMatch(null);
+      setIsDetailOpen(false);
+    }
+
+    try {
+      await supabase.from('matches').delete().eq('id', matchId);
+    } catch (e) {
+      console.error('Failed to delete match on Supabase:', e);
+    }
+  };
+
   // Create match (Requires login)
   const handleCreateMatch = async (newMatch: MatchPost) => {
     if (!session) {
@@ -542,7 +736,7 @@ export default function App() {
     }
   };
 
-  // Filtered matches
+  // Filtered matches with Vietnamese normalization & full field search
   const filteredMatches = useMemo(() => {
     return matches.filter((m) => {
       if (activeTab === 'my-matches') {
@@ -560,8 +754,27 @@ export default function App() {
         if (!isMatch) return false;
       }
 
-      if (selectedDate !== 'Tất cả' && !m.date.includes(selectedDate)) {
-        return false;
+      if (selectedDate !== 'Tất cả') {
+        // Strip parenthesized dates like "Thứ 6 (07/11)" -> "Thứ 6"
+        const cleanDatePattern = selectedDate.split(' (')[0].trim().toLowerCase();
+        const matchDateLower = m.date.toLowerCase();
+        if (!matchDateLower.includes(cleanDatePattern)) {
+          return false;
+        }
+      }
+
+      if (selectedTimeSlot !== 'Tất cả') {
+        const startHour = parseInt(m.startTime.split(':')[0], 10) || 0;
+        if (selectedTimeSlot === 'morning' && startHour >= 12) return false;
+        if (selectedTimeSlot === 'afternoon' && (startHour < 12 || startHour >= 17)) return false;
+        if (selectedTimeSlot === 'evening' && startHour < 17) return false;
+      }
+
+      if (selectedPriceRange !== 'Tất cả') {
+        const minPrice = Math.min(m.priceMale, m.priceFemale);
+        if (selectedPriceRange === 'under50' && minPrice >= 50000) return false;
+        if (selectedPriceRange === '50to80' && (minPrice < 50000 || minPrice > 80000)) return false;
+        if (selectedPriceRange === 'above80' && m.priceMale <= 80000) return false;
       }
 
       if (onlyAvailableSlots) {
@@ -569,27 +782,51 @@ export default function App() {
       }
 
       if (selectedLevel !== 'Tất cả') {
-        const matchesLevel =
-          m.minLevel.includes(selectedLevel) ||
-          m.maxLevel.includes(selectedLevel) ||
-          (selectedLevel === 'Trung Bình' && (m.minLevel.includes('TB') || m.maxLevel.includes('TB')));
-        if (!matchesLevel) return false;
+        if (selectedLevel === 'Hợp trình của tôi') {
+          const userLvl = currentUser.level || 'TB Yếu';
+          const matchesUser =
+            m.minLevel === userLvl ||
+            m.maxLevel === userLvl ||
+            m.minLevel.includes(userLvl) ||
+            m.maxLevel.includes(userLvl);
+          if (!matchesUser) return false;
+        } else {
+          const matchesLevel =
+            m.minLevel.includes(selectedLevel) ||
+            m.maxLevel.includes(selectedLevel) ||
+            (selectedLevel === 'Trung Bình' && (m.minLevel.includes('TB') || m.maxLevel.includes('TB')));
+          if (!matchesLevel) return false;
+        }
       }
 
+      // Vietnamese normalization full text search
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchTitle = m.title.toLowerCase().includes(q);
-        const matchCourt = m.courtName.toLowerCase().includes(q);
-        const matchDist = m.district.toLowerCase().includes(q);
-        if (!matchTitle && !matchCourt && !matchDist) return false;
+        const qNorm = normalizeVietnamese(searchQuery.trim());
+        const matchFullNorm = normalizeVietnamese(
+          `${m.title} ${m.courtName} ${m.district} ${m.address}`
+        );
+        const tokens = qNorm.split(' ').filter(Boolean);
+        const matchesAll = tokens.every((token) => matchFullNorm.includes(token));
+        if (!matchesAll) return false;
       }
 
       return true;
     });
-  }, [matches, activeTab, selectedDistrict, selectedDate, selectedLevel, onlyAvailableSlots, searchQuery, currentUser]);
+  }, [
+    matches,
+    activeTab,
+    selectedDistrict,
+    selectedDate,
+    selectedTimeSlot,
+    selectedPriceRange,
+    selectedLevel,
+    onlyAvailableSlots,
+    searchQuery,
+    currentUser,
+  ]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-white pb-24 sm:pb-0">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-white pb-28 sm:pb-0">
       {/* Auth Error Banner if present */}
       {authError && (
         <div className="bg-rose-600 text-white px-4 py-2.5 text-xs sm:text-sm font-semibold flex items-center justify-between">
@@ -600,7 +837,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setAuthError(null)}
-            className="text-white hover:text-slate-200 text-xs font-bold underline ml-2"
+            className="text-white hover:text-slate-200 text-xs font-bold underline ml-2 cursor-pointer"
           >
             Đóng
           </button>
@@ -612,7 +849,13 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 sm:h-20 gap-4">
             {/* Logo */}
-            <div className="flex items-center gap-3">
+            <div
+              className="flex items-center gap-3 cursor-pointer"
+              onClick={() => {
+                setActiveTab('feed');
+                handleResetFilters();
+              }}
+            >
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-600/20 text-xl sm:text-2xl font-black">
                 🏸
               </div>
@@ -633,7 +876,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Desktop Center Search */}
+            {/* Desktop Center Search with Clear Button (Bug 1 & 8) */}
             <div className="hidden md:flex flex-1 max-w-md mx-4">
               <div className="relative w-full">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -641,9 +884,19 @@ export default function App() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm sân cầu, quận huyện (VD: Viettel, Kỳ Hòa, Tân Bình...)"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-100/80 border border-slate-200 focus:border-emerald-500 focus:bg-white text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none transition-all"
+                  placeholder="Tìm theo tên sân, tên đường, quận (VD: Celadon, Mã Lò, Lê Văn Quới...)"
+                  className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-slate-100/80 border border-slate-200 focus:border-emerald-500 focus:bg-white text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none transition-all"
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 cursor-pointer"
+                    title="Xóa tìm kiếm"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             </div>
 
@@ -703,7 +956,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Mobile search input */}
+          {/* Mobile search input with Clear button (Bug 8) */}
           <div className="md:hidden pb-3">
             <div className="relative w-full">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -711,9 +964,18 @@ export default function App() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm sân cầu, quận (VD: Viettel, Kỳ Hòa, Q.10...)"
-                className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-100 border border-slate-200 focus:border-emerald-500 focus:bg-white text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
+                placeholder="Tìm sân, đường, quận (VD: Celadon, Mã Lò, Tân Phú...)"
+                className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-100 border border-slate-200 focus:border-emerald-500 focus:bg-white text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -812,7 +1074,7 @@ export default function App() {
               <button
                 key={d}
                 type="button"
-                onClick={() => setSelectedDistrict(selectedDistrict === d ? 'Tất cả' : d)}
+                onClick={() => handleSelectDistrict(selectedDistrict === d ? 'Tất cả' : d)}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
                   selectedDistrict === d
                     ? 'bg-emerald-600 text-white border-emerald-600 font-bold'
@@ -836,8 +1098,9 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer flex items-center gap-1"
               >
+                <RotateCcw className="w-3 h-3" />
                 Đặt lại
               </button>
             </div>
@@ -847,13 +1110,13 @@ export default function App() {
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
                 Khu vực (Quận / Huyện)
               </label>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
                 {districts.map((d) => (
                   <button
                     key={d}
                     type="button"
-                    onClick={() => setSelectedDistrict(d)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                    onClick={() => handleSelectDistrict(d)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                       selectedDistrict === d
                         ? 'bg-emerald-600 text-white font-bold shadow-xs'
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
@@ -865,24 +1128,80 @@ export default function App() {
               </div>
             </div>
 
-            {/* Filter by Date */}
+            {/* Filter by Date (Bug 6: Dynamic 7-day) */}
             <div className="pt-3 border-t border-slate-100">
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
                 Thời gian đánh
               </label>
               <div className="grid grid-cols-2 gap-1.5">
-                {dates.map((dt) => (
+                {upcomingDateOptions.map((dt) => (
                   <button
                     key={dt}
                     type="button"
                     onClick={() => setSelectedDate(dt)}
-                    className={`px-3 py-2 rounded-xl text-xs font-medium text-center transition-all ${
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-medium text-center transition-all cursor-pointer truncate ${
                       selectedDate === dt
                         ? 'bg-teal-600 text-white font-bold shadow-xs'
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                     }`}
                   >
                     {dt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Ca chơi (Imp 14) */}
+            <div className="pt-3 border-t border-slate-100">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
+                Ca chơi trong ngày
+              </label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { label: 'Tất cả', val: 'Tất cả' },
+                  { label: 'Sáng (<12h)', val: 'morning' },
+                  { label: 'Chiều (12-17h)', val: 'afternoon' },
+                  { label: 'Tối (>17h)', val: 'evening' },
+                ].map((item) => (
+                  <button
+                    key={item.val}
+                    type="button"
+                    onClick={() => setSelectedTimeSlot(item.val as any)}
+                    className={`px-2 py-1.5 rounded-xl text-[11px] font-semibold text-center transition-all cursor-pointer ${
+                      selectedTimeSlot === item.val
+                        ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Khoảng giá (Imp 15) */}
+            <div className="pt-3 border-t border-slate-100">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
+                Khoảng chi phí
+              </label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {[
+                  { label: 'Tất cả giá', val: 'Tất cả' },
+                  { label: '< 50.000 đ', val: 'under50' },
+                  { label: '50k - 80k', val: '50to80' },
+                  { label: '> 80.000 đ', val: 'above80' },
+                ].map((item) => (
+                  <button
+                    key={item.val}
+                    type="button"
+                    onClick={() => setSelectedPriceRange(item.val as any)}
+                    className={`px-2 py-1.5 rounded-xl text-xs font-semibold text-center transition-all cursor-pointer ${
+                      selectedPriceRange === item.val
+                        ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {item.label}
                   </button>
                 ))}
               </div>
@@ -899,7 +1218,7 @@ export default function App() {
                     key={lvl}
                     type="button"
                     onClick={() => setSelectedLevel(lvl)}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-between ${
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-between cursor-pointer ${
                       selectedLevel === lvl
                         ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200'
                         : 'hover:bg-slate-50 text-slate-600'
@@ -919,7 +1238,7 @@ export default function App() {
                   type="checkbox"
                   checked={onlyAvailableSlots}
                   onChange={(e) => setOnlyAvailableSlots(e.target.checked)}
-                  className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                  className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                 />
                 Chỉ hiện kèo còn slot trống
               </label>
@@ -969,26 +1288,20 @@ export default function App() {
                 <div className="text-4xl mb-3">🏸</div>
                 <h4 className="text-base font-bold text-slate-800">Không tìm thấy kèo phù hợp</h4>
                 <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                  Bạn có thể thử chọn "Tất cả quận" hoặc tự mình đứng ra làm Host đăng một kèo mới!
+                  Bạn có thể thử xóa bớt điều kiện lọc hoặc tự mình đứng ra làm Host đăng một kèo mới!
                 </p>
                 <div className="mt-4 flex items-center justify-center gap-3">
                   <button
                     type="button"
-                    onClick={() => {
-                      setSelectedDistrict('Tất cả');
-                      setSelectedLevel('Tất cả');
-                      setSelectedDate('Tất cả');
-                      setOnlyAvailableSlots(false);
-                      setSearchQuery('');
-                    }}
-                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 cursor-pointer"
+                    onClick={handleResetFilters}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 cursor-pointer transition-colors"
                   >
-                    Xóa bộ lọc
+                    Xóa tất cả bộ lọc
                   </button>
                   <button
                     type="button"
                     onClick={handleOpenCreateMatch}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer transition-colors"
                   >
                     + Đăng kèo ngay
                   </button>
@@ -1001,8 +1314,10 @@ export default function App() {
                     key={m.id}
                     match={m}
                     currentUser={currentUser}
+                    isBookmarked={bookmarkedIds.includes(m.id)}
                     onJoin={handleToggleJoin}
                     onSelect={handleOpenMatchDetail}
+                    onToggleBookmark={handleToggleBookmark}
                   />
                 ))}
               </div>
@@ -1010,6 +1325,18 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {/* Floating Back-to-Top Button (Imp 24) */}
+      {showBackToTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-30 w-11 h-11 rounded-full bg-white/95 hover:bg-white text-slate-700 hover:text-emerald-600 shadow-xl border border-slate-200 backdrop-blur-md flex items-center justify-center cursor-pointer transition-all active:scale-95 group"
+          title="Cuộn lên đầu trang"
+        >
+          <ArrowUp className="w-5 h-5 group-hover:-translate-y-0.5 transition-transform" />
+        </button>
+      )}
 
       {/* ================= DESKTOP FOOTER ================= */}
       <footer className="bg-white border-t border-slate-200 mt-12 py-8 text-xs text-slate-500">
@@ -1024,17 +1351,19 @@ export default function App() {
             <span>•</span>
             <span>Phân trình tự động</span>
             <span>•</span>
+            <span>Mã VietQR cọc slot</span>
+            <span>•</span>
             <span>Kết nối Zalo Host</span>
           </div>
         </div>
       </footer>
 
       {/* ================= MOBILE BOTTOM NAVIGATION (HIDDEN ON DESKTOP) ================= */}
-      <nav className="sm:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-6 py-2 flex items-center justify-around z-30 shadow-lg">
+      <nav className="sm:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-6 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex items-center justify-around z-30 shadow-lg">
         <button
           type="button"
           onClick={() => setActiveTab('feed')}
-          className={`flex flex-col items-center gap-1 transition-all ${
+          className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
             activeTab === 'feed' ? 'text-emerald-600 font-bold' : 'text-slate-400'
           }`}
         >
@@ -1045,7 +1374,7 @@ export default function App() {
         <button
           type="button"
           onClick={handleOpenCreateMatch}
-          className="flex flex-col items-center -mt-6 group"
+          className="flex flex-col items-center -mt-6 group cursor-pointer"
         >
           <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-600/30 active:scale-95 transition-all">
             <Plus className="w-6 h-6 stroke-[2.5]" />
@@ -1056,7 +1385,7 @@ export default function App() {
         <button
           type="button"
           onClick={() => setActiveTab('my-matches')}
-          className={`flex flex-col items-center gap-1 transition-all ${
+          className={`flex flex-col items-center gap-1 transition-all cursor-pointer ${
             activeTab === 'my-matches' ? 'text-emerald-600 font-bold' : 'text-slate-400'
           }`}
         >
@@ -1067,7 +1396,7 @@ export default function App() {
         <button
           type="button"
           onClick={handleOpenProfile}
-          className="flex flex-col items-center gap-1 text-slate-400"
+          className="flex flex-col items-center gap-1 text-slate-400 cursor-pointer"
         >
           <User className="w-5 h-5" />
           <span className="text-[10px]">{session ? 'Cá nhân' : 'Đăng nhập'}</span>
@@ -1114,12 +1443,12 @@ export default function App() {
                     <span className="text-[11px] font-bold text-emerald-600">Đang chọn: {selectedDistrict}</span>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
                   {districts.map((d) => (
                     <button
                       key={d}
                       type="button"
-                      onClick={() => setSelectedDistrict(d)}
+                      onClick={() => handleSelectDistrict(d)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
                         selectedDistrict === d
                           ? 'bg-emerald-600 text-white font-bold shadow-xs'
@@ -1143,18 +1472,74 @@ export default function App() {
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
-                  {dates.map((dt) => (
+                  {upcomingDateOptions.map((dt) => (
                     <button
                       key={dt}
                       type="button"
                       onClick={() => setSelectedDate(dt)}
-                      className={`px-3 py-2 rounded-xl text-xs font-medium text-center transition-all ${
+                      className={`px-2.5 py-2 rounded-xl text-xs font-medium text-center transition-all truncate ${
                         selectedDate === dt
                           ? 'bg-teal-600 text-white font-bold shadow-xs'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                       }`}
                     >
                       {dt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Ca chơi */}
+              <div className="pt-3 border-t border-slate-100">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
+                  Ca chơi
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { label: 'Tất cả', val: 'Tất cả' },
+                    { label: 'Sáng', val: 'morning' },
+                    { label: 'Chiều', val: 'afternoon' },
+                    { label: 'Tối', val: 'evening' },
+                  ].map((item) => (
+                    <button
+                      key={item.val}
+                      type="button"
+                      onClick={() => setSelectedTimeSlot(item.val as any)}
+                      className={`px-2 py-1.5 rounded-xl text-xs font-medium text-center transition-all ${
+                        selectedTimeSlot === item.val
+                          ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Khoảng giá */}
+              <div className="pt-3 border-t border-slate-100">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
+                  Khoảng giá
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { label: 'Tất cả', val: 'Tất cả' },
+                    { label: '< 50.000 đ', val: 'under50' },
+                    { label: '50k - 80k', val: '50to80' },
+                    { label: '> 80.000 đ', val: 'above80' },
+                  ].map((item) => (
+                    <button
+                      key={item.val}
+                      type="button"
+                      onClick={() => setSelectedPriceRange(item.val as any)}
+                      className={`px-2 py-1.5 rounded-xl text-xs font-medium text-center transition-all ${
+                        selectedPriceRange === item.val
+                          ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {item.label}
                     </button>
                   ))}
                 </div>
@@ -1219,6 +1604,68 @@ export default function App() {
         </div>
       )}
 
+      {/* ================= CONFIRM JOIN DIALOG (Bug 4 / Imp 1) ================= */}
+      {confirmJoinMatch && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setConfirmJoinMatch(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+        >
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl text-center space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-xl shadow-xs">
+              🏸
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-base">Xác nhận giữ slot tham gia</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Bạn sắp vào slot tại <strong>{confirmJoinMatch.courtName}</strong> ({confirmJoinMatch.startTime} - {confirmJoinMatch.endTime}, {confirmJoinMatch.date}).
+              </p>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-2xl text-xs text-slate-600 space-y-1.5 text-left border border-slate-100">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Chi phí:</span>
+                <span className="font-bold text-slate-800">
+                  Nam {confirmJoinMatch.priceMale.toLocaleString('vi-VN')} đ | Nữ {confirmJoinMatch.priceFemale.toLocaleString('vi-VN')} đ
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Yêu cầu trình:</span>
+                <span className="font-bold text-teal-700">
+                  {confirmJoinMatch.minLevel} ➔ {confirmJoinMatch.maxLevel}
+                </span>
+              </div>
+              {confirmJoinMatch.bankInfo && (
+                <div className="flex justify-between text-amber-700 font-semibold pt-1 border-t border-slate-200">
+                  <span>Yêu cầu cọc trước:</span>
+                  <span>{(confirmJoinMatch.bankInfo.depositAmount || 0).toLocaleString('vi-VN')} đ</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setConfirmJoinMatch(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const mId = confirmJoinMatch.id;
+                  setConfirmJoinMatch(null);
+                  executeToggleJoin(mId);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 cursor-pointer"
+              >
+                Xác nhận giữ slot
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ================= MODALS ================= */}
       <AuthModal
         isOpen={isAuthOpen}
@@ -1241,13 +1688,18 @@ export default function App() {
         onClose={handleCloseMatchDetail}
         onToggleJoin={handleToggleJoin}
         onRemovePlayer={handleRemovePlayer}
+        onEditMatch={handleEditMatch}
+        onDeleteMatch={handleDeleteMatch}
+        onAddGuest={handleAddGuest}
       />
 
       <CreateMatchModal
         isOpen={isCreateOpen}
         currentUser={currentUser}
+        editMatch={editingMatch}
         onClose={handleCloseCreateMatch}
         onCreate={handleCreateMatch}
+        onUpdate={handleUpdateMatch}
       />
 
       <OnboardingModal
@@ -1264,12 +1716,15 @@ export default function App() {
         isOpen={isProfileOpen}
         user={currentUser}
         matches={matches}
+        bookmarkedMatches={matches.filter((m) => bookmarkedIds.includes(m.id))}
         onClose={handleCloseProfile}
         onRetakeSurvey={() => {
           handleCloseProfile();
           handleOpenOnboarding();
         }}
         onSelectMatch={handleOpenMatchDetail}
+        onUpdateProfile={handleUpdateProfile}
+        onLogout={handleSignOut}
       />
     </div>
   );

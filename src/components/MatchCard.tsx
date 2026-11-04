@@ -1,20 +1,24 @@
 import React from 'react';
 import type { MatchPost, UserProfile } from '../types';
-import { Clock, MapPin, Zap, CheckCircle, ShieldCheck } from 'lucide-react';
+import { Clock, MapPin, Zap, CheckCircle, ShieldCheck, Bookmark, QrCode } from 'lucide-react';
 import { getDefaultCourtImage } from '../supabase';
 
 interface MatchCardProps {
   match: MatchPost;
   currentUser: UserProfile;
+  isBookmarked?: boolean;
   onJoin: (matchId: string) => void;
   onSelect: (match: MatchPost) => void;
+  onToggleBookmark?: (matchId: string) => void;
 }
 
 export const MatchCard: React.FC<MatchCardProps> = ({
   match,
   currentUser,
+  isBookmarked = false,
   onJoin,
   onSelect,
+  onToggleBookmark,
 }) => {
   const isJoined = match.joinedPlayers.some((p) => p.userId === currentUser.id);
   const remainingSlots = match.totalSlots - match.joinedPlayers.length;
@@ -54,15 +58,33 @@ export const MatchCard: React.FC<MatchCardProps> = ({
           <span className="text-emerald-300 font-bold">{match.startTime} - {match.endTime}</span>
         </div>
 
-        {/* Top-right: Slot Status Badge */}
-        <div className="absolute top-3 right-3">
+        {/* Top-right: Slot Status Badge & Bookmark */}
+        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+          {onToggleBookmark && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleBookmark(match.id);
+              }}
+              className={`w-7 h-7 rounded-full backdrop-blur-md flex items-center justify-center transition-all cursor-pointer shadow-xs ${
+                isBookmarked
+                  ? 'bg-amber-400 text-slate-900 shadow-amber-500/30'
+                  : 'bg-black/50 text-white hover:bg-black/70'
+              }`}
+              title={isBookmarked ? 'Bỏ lưu kèo' : 'Lưu lại để xem sau'}
+            >
+              <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
+            </button>
+          )}
+
           {isFull ? (
             <span className="px-2.5 py-1 rounded-full bg-black/65 backdrop-blur-md text-slate-300 text-xs font-semibold">
-              Đã đủ người
+              Đã đủ
             </span>
           ) : remainingSlots <= 2 ? (
             <span className="px-2.5 py-1 rounded-full bg-amber-500/95 backdrop-blur-md text-white text-xs font-bold shadow-xs animate-pulse">
-              Chỉ còn {remainingSlots} slot!
+              Còn {remainingSlots} slot!
             </span>
           ) : (
             <span className="px-2.5 py-1 rounded-full bg-emerald-600/90 backdrop-blur-md text-white text-xs font-bold shadow-xs">
@@ -87,9 +109,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             <span className="text-slate-600 font-medium">{match.district}</span>
           </div>
 
-          {/* Match Meta: Level + Shuttle */}
-          <div className="flex flex-wrap items-center gap-2 mt-3.5">
-            <div className="px-3 py-1 rounded-xl bg-teal-50 border border-teal-200/70 text-teal-900 text-xs font-semibold flex items-center gap-1">
+          {/* Match Meta: Level + Shuttle + Gender/Deposit */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-3.5">
+            <div className="px-2.5 py-1 rounded-xl bg-teal-50 border border-teal-200/70 text-teal-900 text-xs font-semibold flex items-center gap-1">
               <span className="text-teal-600">Trình:</span>
               <span className="font-bold">{match.minLevel} ➔ {match.maxLevel}</span>
             </div>
@@ -97,6 +119,24 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             <div className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-medium">
               {match.courtCount} sân{match.courtNumber ? ` (${match.courtNumber})` : ''} • {match.shuttleType}
             </div>
+
+            {match.targetGender === 'female' && (
+              <span className="px-2 py-1 rounded-xl bg-pink-50 border border-pink-200 text-pink-700 text-[11px] font-bold">
+                🙋‍♀️ Chỉ Nữ
+              </span>
+            )}
+            {match.targetGender === 'male' && (
+              <span className="px-2 py-1 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-bold">
+                🙋‍♂️ Chỉ Nam
+              </span>
+            )}
+
+            {match.bankInfo && (
+              <span className="px-2 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center gap-1">
+                <QrCode className="w-3 h-3 text-emerald-600" />
+                Cọc {formatMoney(match.bankInfo.depositAmount || 0)}
+              </span>
+            )}
           </div>
 
           {/* Slot Progress Bar */}
@@ -152,7 +192,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                   e.stopPropagation();
                   onJoin(match.id);
                 }}
-                className="px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center gap-1.5 border border-emerald-300"
+                className="px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center gap-1.5 border border-emerald-300 cursor-pointer"
               >
                 <CheckCircle className="w-4 h-4 text-emerald-600" />
                 Đã giữ slot
@@ -172,7 +212,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                   e.stopPropagation();
                   onJoin(match.id);
                 }}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
               >
                 <Zap className="w-3.5 h-3.5 fill-current" />
                 Vào ngay

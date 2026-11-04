@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { MatchPost, SkillLevel, UserProfile } from '../types';
-import { X, Plus, Sparkles, Image as ImageIcon, Check, MapPin, Navigation, Upload, Camera, Trash2 } from 'lucide-react';
+import { X, Plus, Sparkles, Image as ImageIcon, Check, MapPin, Navigation, Upload, Camera, Trash2, QrCode } from 'lucide-react';
 import { getDefaultCourtImage } from '../supabase';
 import { searchCourts, type CourtInfo } from '../data/badmintonCourts';
 
@@ -9,6 +9,8 @@ interface CreateMatchModalProps {
   currentUser: UserProfile;
   onClose: () => void;
   onCreate: (newMatch: MatchPost) => void;
+  onUpdate?: (updatedMatch: MatchPost) => void;
+  editMatch?: MatchPost | null;
 }
 
 const DISTRICTS = [
@@ -48,11 +50,37 @@ const SKILL_LEVELS: SkillLevel[] = [
 
 const SHUTTLE_TYPES = ['VinaStar Đỏ', 'VinaStar Xanh', 'Hải Yến Đỏ', 'Thành Công 77', 'Victor', 'Ba Sao'];
 
+const ALL_AMENITIES = [
+  'Thảm chuẩn thi đấu',
+  'Nước đá miễn phí',
+  'Máy lạnh / Quạt công nghiệp',
+  'Bãi đỗ xe ô tô',
+  'Phòng tắm nóng lạnh',
+  'Căng tin nước uống',
+  'Dịch vụ căng vợt',
+];
+
+const VIETNAMESE_BANKS = [
+  'MBBank',
+  'Vietcombank',
+  'Techcombank',
+  'VPBank',
+  'ACB',
+  'BIDV',
+  'VietinBank',
+  'TPBank',
+  'OCB',
+  'VIB',
+  'Sacombank',
+];
+
 export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   isOpen,
   currentUser,
   onClose,
   onCreate,
+  onUpdate,
+  editMatch,
 }) => {
   const [title, setTitle] = useState('');
   const [courtName, setCourtName] = useState('');
@@ -63,6 +91,94 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const [suggestions, setSuggestions] = useState<CourtInfo[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const autocompleteRef = useRef<HTMLDivElement>(null);
+
+  const [date, setDate] = useState('Hôm nay');
+  const [startTime, setStartTime] = useState('18:00');
+  const [endTime, setEndTime] = useState('20:00');
+  const [courtNumber, setCourtNumber] = useState('');
+  const [isCustomCourt, setIsCustomCourt] = useState(false);
+  const [availableCourtsCount, setAvailableCourtsCount] = useState<number>(18);
+  const [shuttleType, setShuttleType] = useState('VinaStar Đỏ');
+  const [totalSlots, setTotalSlots] = useState(8);
+  const [minLevel, setMinLevel] = useState<SkillLevel>('TB Yếu');
+  const [maxLevel, setMaxLevel] = useState<SkillLevel>('TB+');
+  const [priceMale, setPriceMale] = useState(60000);
+  const [priceFemale, setPriceFemale] = useState(40000);
+  const [coverImage, setCoverImage] = useState('');
+  const [notes, setNotes] = useState('Sân vui vẻ giao lưu, có nước đá miễn phí. Đến đúng giờ nhé cả nhà!');
+
+  // Extra metadata
+  const [targetGender, setTargetGender] = useState<'all' | 'male' | 'female'>('all');
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>(['Thảm chuẩn thi đấu', 'Nước đá miễn phí']);
+  const [hasBankInfo, setHasBankInfo] = useState(false);
+  const [bankName, setBankName] = useState('MBBank');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [depositAmount, setDepositAmount] = useState<number>(30000);
+
+  // Sync state when opening or when editMatch is passed
+  useEffect(() => {
+    if (editMatch) {
+      setTitle(editMatch.title || '');
+      setCourtName(editMatch.courtName || '');
+      setSelectedCourtName(editMatch.courtName || '');
+      setDistrict(editMatch.district || 'Tân Phú');
+      setAddress(editMatch.address || '');
+      setGoogleMapsUrl(editMatch.googleMapsUrl || '');
+      setDate(editMatch.date || 'Hôm nay');
+      setStartTime(editMatch.startTime || '18:00');
+      setEndTime(editMatch.endTime || '20:00');
+      setCourtNumber(editMatch.courtNumber || '');
+      setShuttleType(editMatch.shuttleType || 'VinaStar Đỏ');
+      setTotalSlots(editMatch.totalSlots || 8);
+      setMinLevel(editMatch.minLevel || 'TB Yếu');
+      setMaxLevel(editMatch.maxLevel || 'TB+');
+      setPriceMale(editMatch.priceMale || 60000);
+      setPriceFemale(editMatch.priceFemale || 40000);
+      setCoverImage(editMatch.coverImage || '');
+      setNotes(editMatch.notes || '');
+      setTargetGender(editMatch.targetGender || 'all');
+      setSelectedAmenities(editMatch.amenities && editMatch.amenities.length > 0 ? editMatch.amenities : ['Thảm chuẩn thi đấu', 'Nước đá miễn phí']);
+      if (editMatch.bankInfo) {
+        setHasBankInfo(true);
+        setBankName(editMatch.bankInfo.bankName || 'MBBank');
+        setAccountNumber(editMatch.bankInfo.accountNumber || '');
+        setAccountName(editMatch.bankInfo.accountName || '');
+        setDepositAmount(editMatch.bankInfo.depositAmount || 30000);
+      } else {
+        setHasBankInfo(false);
+        setAccountNumber('');
+        setAccountName('');
+      }
+    } else {
+      setTitle('');
+      setCourtName('');
+      setSelectedCourtName('');
+      setDistrict('Tân Phú');
+      setAddress('');
+      setGoogleMapsUrl('');
+      setDate('Hôm nay');
+      setStartTime('18:00');
+      setEndTime('20:00');
+      setCourtNumber('');
+      setIsCustomCourt(false);
+      setShuttleType('VinaStar Đỏ');
+      setTotalSlots(8);
+      setMinLevel('TB Yếu');
+      setMaxLevel('TB+');
+      setPriceMale(60000);
+      setPriceFemale(40000);
+      setCoverImage('');
+      setNotes('Sân vui vẻ giao lưu, có nước đá miễn phí. Đến đúng giờ nhé cả nhà!');
+      setTargetGender('all');
+      setSelectedAmenities(['Thảm chuẩn thi đấu', 'Nước đá miễn phí']);
+      setHasBankInfo(false);
+      setBankName('MBBank');
+      setAccountNumber('');
+      setAccountName('');
+      setDepositAmount(30000);
+    }
+  }, [isOpen, editMatch]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,22 +202,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
-
-  const [date, setDate] = useState('Hôm nay');
-  const [startTime, setStartTime] = useState('18:00');
-  const [endTime, setEndTime] = useState('20:00');
-  const [courtNumber, setCourtNumber] = useState('');
-  const [isCustomCourt, setIsCustomCourt] = useState(false);
-  const [availableCourtsCount, setAvailableCourtsCount] = useState<number>(18);
-  const [shuttleType, setShuttleType] = useState('VinaStar Đỏ');
-  const [totalSlots, setTotalSlots] = useState(8);
-  const [minLevel, setMinLevel] = useState<SkillLevel>('TB Yếu');
-  const [maxLevel, setMaxLevel] = useState<SkillLevel>('TB+');
-  const [priceMale, setPriceMale] = useState(60000);
-  const [priceFemale, setPriceFemale] = useState(40000);
-  const [coverImage, setCoverImage] = useState('');
-  const [notes, setNotes] = useState('Sân vui vẻ giao lưu, có nước đá miễn phí. Đến đúng giờ nhé cả nhà!');
+  }, [showSuggestions, onClose]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -190,6 +291,42 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
         `${courtName.trim()} ${address.trim()} ${district}`.trim()
       )}`;
 
+    const bankData = hasBankInfo && accountNumber.trim() ? {
+      bankName,
+      accountNumber: accountNumber.trim(),
+      accountName: accountName.trim().toUpperCase(),
+      depositAmount: Number(depositAmount) || 30000,
+    } : undefined;
+
+    if (editMatch && onUpdate) {
+      const updatedMatch: MatchPost = {
+        ...editMatch,
+        title: title.trim() || `Tuyển vãng lai tại ${courtName} (${startTime} - ${endTime})`,
+        courtName: courtName.trim(),
+        district,
+        address: address.trim() || `${courtName}, ${district}`,
+        date,
+        startTime,
+        endTime,
+        courtNumber,
+        shuttleType,
+        totalSlots: Number(totalSlots) || 8,
+        minLevel,
+        maxLevel,
+        priceMale: Number(priceMale) || 60000,
+        priceFemale: Number(priceFemale) || 40000,
+        coverImage: finalImage,
+        googleMapsUrl: finalMapsUrl,
+        notes: notes.trim(),
+        targetGender,
+        amenities: selectedAmenities,
+        bankInfo: bankData,
+      };
+      onUpdate(updatedMatch);
+      onClose();
+      return;
+    }
+
     const newMatch: MatchPost = {
       id: `match-${Date.now()}`,
       title: title.trim() || `Tuyển vãng lai tại ${courtName} (${startTime} - ${endTime})`,
@@ -226,6 +363,10 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       googleMapsUrl: finalMapsUrl,
       notes: notes.trim(),
       createdAt: 'Vừa xong',
+      status: 'active',
+      targetGender,
+      amenities: selectedAmenities,
+      bankInfo: bankData,
     };
 
     onCreate(newMatch);
@@ -244,7 +385,9 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-yellow-300" />
-            <h2 className="text-base sm:text-lg font-bold">Đăng Tuyển Kèo Vãng Lai Mới</h2>
+            <h2 className="text-base sm:text-lg font-bold">
+              {editMatch ? 'Chỉnh Sửa Thông Tin Kèo' : 'Đăng Tuyển Kèo Vãng Lai Mới'}
+            </h2>
           </div>
           <button
             type="button"
@@ -582,6 +725,172 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
             </div>
           </div>
 
+          {/* Đối tượng tuyển */}
+          <div className="pt-2 border-t border-slate-100">
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">
+              Đối tượng tuyển
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setTargetGender('all')}
+                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
+                  targetGender === 'all'
+                    ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-xs'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                👥 Cả Nam & Nữ
+              </button>
+              <button
+                type="button"
+                onClick={() => setTargetGender('male')}
+                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
+                  targetGender === 'male'
+                    ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-xs'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                🙋‍♂️ Chỉ tuyển Nam
+              </button>
+              <button
+                type="button"
+                onClick={() => setTargetGender('female')}
+                className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
+                  targetGender === 'female'
+                    ? 'bg-pink-50 border-pink-500 text-pink-700 shadow-xs'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                🙋‍♀️ Chỉ tuyển Nữ
+              </button>
+            </div>
+          </div>
+
+          {/* Tiện ích sân */}
+          <div className="pt-2 border-t border-slate-100">
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">
+              Tiện ích sân & dịch vụ
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {ALL_AMENITIES.map((amenity) => {
+                const isSelected = selectedAmenities.includes(amenity);
+                return (
+                  <button
+                    key={amenity}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedAmenities(selectedAmenities.filter((a) => a !== amenity));
+                      } else {
+                        setSelectedAmenities([...selectedAmenities, amenity]);
+                      }
+                    }}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer flex items-center gap-1 ${
+                      isSelected
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-800 font-semibold'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3 h-3 text-emerald-600" />}
+                    {amenity}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Nhận cọc VietQR chống bùng slot */}
+          <div className="pt-2 border-t border-slate-100">
+            <div className="p-3 rounded-2xl border border-emerald-200 bg-emerald-50/40">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
+                    <QrCode className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">
+                      Yêu cầu cọc slot qua VietQR
+                    </span>
+                    <span className="text-[11px] text-slate-500 block">
+                      Chống bùng slot giờ chót, tạo mã QR chuyển khoản tự động
+                    </span>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={hasBankInfo}
+                    onChange={(e) => setHasBankInfo(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
+
+              {hasBankInfo && (
+                <div className="mt-3 pt-3 border-t border-emerald-100 space-y-2.5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        Ngân hàng
+                      </label>
+                      <select
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-emerald-500"
+                      >
+                        {VIETNAMESE_BANKS.map((b) => (
+                          <option key={b} value={b}>
+                            {b}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        Số tài khoản <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={accountNumber}
+                        onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                        placeholder="VD: 0987654321"
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-emerald-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        Tên chủ tài khoản <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={accountName}
+                        onChange={(e) => setAccountName(e.target.value.toUpperCase())}
+                        placeholder="VD: NGUYEN VAN A"
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs bg-white uppercase focus:outline-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        Tiền cọc / slot (VNĐ)
+                      </label>
+                      <input
+                        type="number"
+                        step={5000}
+                        value={depositAmount}
+                        onChange={(e) => setDepositAmount(Number(e.target.value))}
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Ảnh bìa sân cầu lông / ảnh nhóm */}
           <div className="pt-2 border-t border-slate-100">
             <div className="flex items-center justify-between mb-2">
@@ -674,10 +983,10 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
           <div className="pt-3">
             <button
               type="submit"
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 active:scale-98 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              Đăng Tuyển Kèo Ngay
+              {editMatch ? 'Lưu Cập Nhật Kèo' : 'Đăng Tuyển Kèo Ngay'}
             </button>
           </div>
         </form>

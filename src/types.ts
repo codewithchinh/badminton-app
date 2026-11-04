@@ -46,6 +46,15 @@ export interface MatchPost {
   googleMapsUrl?: string;
   notes: string;
   createdAt: string;
+  status?: 'active' | 'completed' | 'cancelled';
+  targetGender?: 'all' | 'male' | 'female';
+  amenities?: string[];
+  bankInfo?: {
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+    depositAmount?: number;
+  };
 }
 
 export interface UserProfile {
@@ -58,4 +67,6 @@ export interface UserProfile {
   hasPlayedOtherCourts: boolean;
   isOnboarded: boolean;
   joinedMatchIds: string[];
+  savedMatchIds?: string[];
+  playedMatchesCount?: number;
 }
