@@ -42,6 +42,7 @@ export interface MatchPost {
   hostAvatar: string;
   hostPhone: string;
   hostBadge: string;
+  coverImage?: string;
   notes: string;
   createdAt: string;
 }

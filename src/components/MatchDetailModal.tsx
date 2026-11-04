@@ -12,6 +12,7 @@ import {
   Zap,
   CheckCircle,
 } from 'lucide-react';
+import { getDefaultCourtImage } from '../supabase';
 
 interface MatchDetailModalProps {
   match: MatchPost | null;
@@ -56,25 +57,30 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     }
   };
 
+  const coverSrc = match.coverImage || getDefaultCourtImage(match.courtName, match.district);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4">
       <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in fade-in slide-in-from-bottom-6 duration-200">
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-              {match.date}
-            </span>
-            <span className="text-xs text-slate-500 font-semibold">
-              {match.startTime} - {match.endTime}
-            </span>
-          </div>
+        {/* Banner Cover Image */}
+        <div className="relative h-44 sm:h-52 w-full overflow-hidden bg-slate-900 shrink-0">
+          <img
+            src={coverSrc}
+            alt={match.courtName}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src =
+                'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80';
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/40 pointer-events-none" />
 
-          <div className="flex items-center gap-2">
+          {/* Top Actions: Share & Close */}
+          <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
             <button
               type="button"
               onClick={handleShare}
-              className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:text-emerald-600"
+              className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-black/60 transition-colors shadow-sm"
               title="Chia sẻ kèo"
             >
               <Share2 className="w-4 h-4" />
@@ -82,10 +88,26 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100"
+              className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-black/60 transition-colors shadow-sm"
+              title="Đóng"
             >
               <X className="w-4 h-4" />
             </button>
+          </div>
+
+          {/* Bottom Info on Cover */}
+          <div className="absolute bottom-4 left-4 right-4 text-white z-10">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/90 text-white text-xs font-bold shadow-xs">
+                {match.date}
+              </span>
+              <span className="text-xs text-white/90 font-bold backdrop-blur-md bg-black/35 px-2.5 py-0.5 rounded-full border border-white/15">
+                {match.startTime} - {match.endTime}
+              </span>
+            </div>
+            <h2 className="text-lg sm:text-xl font-extrabold text-white leading-tight drop-shadow-xs line-clamp-1">
+              {match.courtName}
+            </h2>
           </div>
         </div>
 

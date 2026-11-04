@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { MatchPost, SkillLevel, UserProfile } from '../types';
-import { X, Plus, Sparkles } from 'lucide-react';
+import { X, Plus, Sparkles, Image as ImageIcon, Check } from 'lucide-react';
+import { COURT_PRESET_IMAGES, getDefaultCourtImage } from '../supabase';
 
 interface CreateMatchModalProps {
   isOpen: boolean;
@@ -56,6 +57,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const [maxLevel, setMaxLevel] = useState<SkillLevel>('TB+');
   const [priceMale, setPriceMale] = useState(60000);
   const [priceFemale, setPriceFemale] = useState(40000);
+  const [coverImage, setCoverImage] = useState('');
   const [notes, setNotes] = useState('Sân vui vẻ giao lưu, có nước đá miễn phí. Đến đúng giờ nhé cả nhà!');
 
   if (!isOpen) return null;
@@ -99,6 +101,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       hostAvatar: currentUser.avatar,
       hostPhone: currentUser.phone,
       hostBadge: 'Host mới ⭐ 5.0',
+      coverImage: coverImage.trim() || getDefaultCourtImage(courtName.trim(), district),
       notes: notes.trim(),
       createdAt: 'Vừa xong',
     };
@@ -324,6 +327,61 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500"
               />
             </div>
+          </div>
+
+          {/* Ảnh bìa sân cầu lông (Tùy chọn) */}
+          <div className="pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-emerald-600" />
+                Ảnh sân cầu lông (Tùy chọn)
+              </label>
+              <span className="text-[11px] text-slate-400 font-medium">Tự động gán nếu bỏ trống</span>
+            </div>
+
+            {/* Gợi ý chọn ảnh mẫu 1 chạm */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+              {COURT_PRESET_IMAGES.slice(0, 4).map((preset) => {
+                const isSelected = coverImage === preset.url;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => setCoverImage(isSelected ? '' : preset.url)}
+                    className={`relative rounded-xl overflow-hidden h-16 border-2 transition-all text-left group ${
+                      isSelected
+                        ? 'border-emerald-600 ring-2 ring-emerald-500/20'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <img
+                      src={preset.url}
+                      alt={preset.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-black/40 flex items-end p-1.5">
+                      <span className="text-[10px] text-white font-semibold truncate leading-tight">
+                        {preset.name.split(' (')[0]}
+                      </span>
+                    </div>
+                    {isSelected && (
+                      <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+                        <Check className="w-2.5 h-2.5" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Hoặc nhập link ảnh tùy chỉnh */}
+            <input
+              type="url"
+              value={coverImage}
+              onChange={(e) => setCoverImage(e.target.value)}
+              placeholder="Hoặc dán link ảnh sân/ảnh nhóm của bạn..."
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500"
+            />
           </div>
 
           {/* Ghi chú */}

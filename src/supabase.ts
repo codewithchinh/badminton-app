@@ -41,7 +41,65 @@ export interface DbMatchRow {
   created_at: string;
 }
 
+export const COURT_PRESET_IMAGES: { id: string; name: string; url: string; matchKey: string }[] = [
+  {
+    id: 'viettel',
+    name: 'Sân Viettel (Tân Bình)',
+    matchKey: 'viettel',
+    url: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=800&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'ky-hoa',
+    name: 'Sân Kỳ Hòa (Quận 10)',
+    matchKey: 'kỳ hòa',
+    url: 'https://images.unsplash.com/photo-1613918431703-81816e87f654?w=800&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'khang-an',
+    name: 'Sân Khang An (Gò Vấp)',
+    matchKey: 'khang an',
+    url: 'https://images.unsplash.com/photo-1521537634581-0dced2fee2ef?w=800&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'binh-minh',
+    name: 'Sân Bình Minh (Bình Thạnh)',
+    matchKey: 'bình minh',
+    url: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'standard',
+    name: 'Sân Tiêu Chuẩn Thảm Xanh',
+    matchKey: 'standard',
+    url: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80',
+  },
+];
+
+export function getDefaultCourtImage(courtName: string, district?: string): string {
+  const normalized = (courtName + ' ' + (district || '')).toLowerCase();
+  for (const preset of COURT_PRESET_IMAGES) {
+    if (preset.matchKey !== 'standard' && normalized.includes(preset.matchKey)) {
+      return preset.url;
+    }
+  }
+  let hash = 0;
+  for (let i = 0; i < courtName.length; i++) {
+    hash = (hash + courtName.charCodeAt(i)) % COURT_PRESET_IMAGES.length;
+  }
+  return COURT_PRESET_IMAGES[hash].url;
+}
+
 export function toMatchPost(row: DbMatchRow): MatchPost {
+  let coverImage = '';
+  let cleanNotes = row.notes || '';
+
+  const imgMatch = cleanNotes.match(/\[IMG:(https?:\/\/[^\]]+)\]/);
+  if (imgMatch) {
+    coverImage = imgMatch[1];
+    cleanNotes = cleanNotes.replace(/\[IMG:https?:\/\/[^\]]+\]/, '').trim();
+  } else {
+    coverImage = getDefaultCourtImage(row.court_name, row.district);
+  }
+
   return {
     id: row.id,
     title: row.title,
@@ -65,12 +123,18 @@ export function toMatchPost(row: DbMatchRow): MatchPost {
     hostAvatar: row.host_avatar,
     hostPhone: row.host_phone,
     hostBadge: row.host_badge || 'Host uy tín ⭐ 5.0',
-    notes: row.notes || '',
+    coverImage,
+    notes: cleanNotes,
     createdAt: row.created_at,
   };
 }
 
 export function toDbRow(match: MatchPost): DbMatchRow {
+  let formattedNotes = match.notes || '';
+  if (match.coverImage && match.coverImage.startsWith('http')) {
+    formattedNotes = `[IMG:${match.coverImage}] ${formattedNotes}`.trim();
+  }
+
   return {
     id: match.id,
     title: match.title,
@@ -94,7 +158,7 @@ export function toDbRow(match: MatchPost): DbMatchRow {
     host_avatar: match.hostAvatar,
     host_phone: match.hostPhone,
     host_badge: match.hostBadge,
-    notes: match.notes,
+    notes: formattedNotes,
     created_at: new Date().toISOString(),
   };
 }
