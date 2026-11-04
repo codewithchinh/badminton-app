@@ -27,3 +27,12 @@
 ### Điều 5: Cổng Kiểm Soát Chất Lượng Bắt Buộc (Mandatory Quality Gate)
 - Trước khi thực hiện `git push` hoặc bàn giao: BẮT BUỘC phải chạy kiểm thử biên dịch `npm run build` (`tsc -b && vite build`) và đạt `0` lỗi TypeScript.
 - Xác nhận trạng thái triển khai thực tế trên Production (Vercel HTTP 200, hash bundle khớp) trước khi tuyên bố hoàn thành.
+
+### Điều 6: Toàn Diện Dữ Liệu Thực Tế (Comprehensive Real Data - Anti-Mocking)
+- Tuyệt đối không hardcode dữ liệu mẫu (mock data) chắp vá vài mục mang tính tượng trưng khi xây dựng tính năng tìm kiếm, danh bạ hoặc định tuyến.
+- Khi được giao xây dựng danh bạ theo khu vực ưu tiên: Bắt buộc phải thu thập đầy đủ, quét sạch theo từng địa bàn, từng trục đường giao thông thực tế.
+
+### Điều 7: Nghiêm Cấm Sửa Lỗi Chắp Vá Đối Phó (Strict Ban on Reactive Patching)
+- Khi người dùng phản ánh thiếu sót dữ liệu hoặc chỉ ra lỗi sót: NGHIÊM CẤM chỉ bổ sung đúng những mục người dùng nêu bằng miệng.
+- Bắt buộc phải truy tìm nguyên nhân gốc rễ (Root Cause), mở rộng phạm vi và rà soát toàn diện 100% các mục còn lại của toàn bộ khu vực trước khi tuyên bố đã xử lý xong.
+- Luôn xây dựng cơ chế Fallback thông minh để không bao giờ để người dùng rơi vào trạng thái kết quả trống rỗng hay tắc nghẽn luồng nghiệp vụ.
