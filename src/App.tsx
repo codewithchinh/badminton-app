@@ -54,7 +54,7 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState('Tất cả');
   const [onlyAvailableSlots, setOnlyAvailableSlots] = useState(false);
 
-  const districts = ['Tất cả', 'Tân Phú', 'Bình Tân', 'Tân Bình', 'Thủ Đức', 'Quận 10', 'Gò Vấp', 'Bình Thạnh', 'Phú Nhuận', 'Quận 7'];
+  const districts = ['Tất cả', 'Tân Phú', 'Bình Tân', 'Tân Bình', 'Thủ Đức', 'Quận 2', 'Quận 7', 'Quận 10', 'Gò Vấp', 'Bình Thạnh', 'Phú Nhuận'];
   const dates = ['Tất cả', 'Hôm nay', 'Ngày mai', 'Chủ Nhật'];
   const levels = ['Tất cả', 'Hợp trình của tôi', 'Newbie', 'Yếu', 'Trung Bình', 'Khá (Bán chuyên)'];
 
@@ -550,8 +550,14 @@ export default function App() {
         if (!isJoined) return false;
       }
 
-      if (selectedDistrict !== 'Tất cả' && m.district !== selectedDistrict) {
-        return false;
+      if (selectedDistrict !== 'Tất cả') {
+        const d = selectedDistrict;
+        const matchD = m.district;
+        const isMatch =
+          matchD === d ||
+          (d === 'Thủ Đức' && (matchD === 'Thủ Đức' || matchD === 'Quận 2')) ||
+          (d === 'Quận 2' && (matchD === 'Quận 2' || matchD.includes('Quận 2')));
+        if (!isMatch) return false;
       }
 
       if (selectedDate !== 'Tất cả' && !m.date.includes(selectedDate)) {

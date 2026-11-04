@@ -36,3 +36,10 @@
 - Khi người dùng phản ánh thiếu sót dữ liệu hoặc chỉ ra lỗi sót: NGHIÊM CẤM chỉ bổ sung đúng những mục người dùng nêu bằng miệng.
 - Bắt buộc phải truy tìm nguyên nhân gốc rễ (Root Cause), mở rộng phạm vi và rà soát toàn diện 100% các mục còn lại của toàn bộ khu vực trước khi tuyên bố đã xử lý xong.
 - Luôn xây dựng cơ chế Fallback thông minh để không bao giờ để người dùng rơi vào trạng thái kết quả trống rỗng hay tắc nghẽn luồng nghiệp vụ.
+
+### Điều 8: Quy Trình Quét Lưới Địa Bàn Hành Chính (Administrative Grid Scan Protocol)
+- Áp dụng bắt buộc cho mọi tác vụ thu thập danh bạ/địa điểm theo quận huyện:
+  1. **Bóc tách theo danh sách tất cả các phường trực thuộc và các trục đường huyết mạch.** Tuyệt đối không search từ khóa chung chung.
+  2. **Đối chiếu chéo đa nguồn:** Google Maps, diễn đàn thể thao, giải đấu phong trào địa phương.
+  3. **Chuẩn hóa kép tên gọi & Từ khóa loại hình:** Chứa cả tiền tố `Sân Cầu Lông` và `CLB Cầu Lông`, địa chỉ chi tiết số nhà, hẻm, tên đường, tên phường.
+  4. **Kiểm thử hồi quy tự động (Automated Regression Test):** Bắt buộc chạy script kiểm thử với hàng chục test cases thực tế (tên riêng, số nhà, tên đường, từ viết tắt) đạt tỷ lệ 100% pass trước khi báo cáo người dùng.
