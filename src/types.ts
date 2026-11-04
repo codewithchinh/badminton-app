@@ -43,6 +43,7 @@ export interface MatchPost {
   hostPhone: string;
   hostBadge: string;
   coverImage?: string;
+  googleMapsUrl?: string;
   notes: string;
   createdAt: string;
 }

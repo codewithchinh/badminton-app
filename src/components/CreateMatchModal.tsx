@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import type { MatchPost, SkillLevel, UserProfile } from '../types';
-import { X, Plus, Sparkles, Image as ImageIcon, Check } from 'lucide-react';
+import { X, Plus, Sparkles, Image as ImageIcon, Check, MapPin, Navigation } from 'lucide-react';
 import { COURT_PRESET_IMAGES, getDefaultCourtImage } from '../supabase';
+import { searchCourts, type CourtInfo } from '../data/badmintonCourts';
 
 interface CreateMatchModalProps {
   isOpen: boolean;
@@ -11,15 +12,24 @@ interface CreateMatchModalProps {
 }
 
 const DISTRICTS = [
-  'Quận 10',
+  'Tân Phú',
+  'Bình Tân',
   'Tân Bình',
+  'Thủ Đức',
+  'Quận 10',
   'Gò Vấp',
   'Bình Thạnh',
   'Phú Nhuận',
   'Quận 7',
-  'Thủ Đức',
   'Quận 1',
   'Quận 3',
+  'Quận 5',
+  'Quận 6',
+  'Quận 8',
+  'Quận 11',
+  'Quận 12',
+  'Bình Chánh',
+  'Hóc Môn',
 ];
 
 const SKILL_LEVELS: SkillLevel[] = [
@@ -45,8 +55,11 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [courtName, setCourtName] = useState('');
-  const [district, setDistrict] = useState('Quận 10');
+  const [district, setDistrict] = useState('Tân Phú');
   const [address, setAddress] = useState('');
+  const [googleMapsUrl, setGoogleMapsUrl] = useState('');
+  const [suggestions, setSuggestions] = useState<CourtInfo[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [date, setDate] = useState('Hôm nay');
   const [startTime, setStartTime] = useState('18:00');
   const [endTime, setEndTime] = useState('20:00');
@@ -62,12 +75,41 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
 
   if (!isOpen) return null;
 
+  const handleCourtNameChange = (val: string) => {
+    setCourtName(val);
+    if (val.trim().length >= 1) {
+      const results = searchCourts(val);
+      setSuggestions(results);
+      setShowSuggestions(results.length > 0);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSelectCourt = (court: CourtInfo) => {
+    setCourtName(court.name);
+    setAddress(court.address);
+    setDistrict(court.district);
+    setGoogleMapsUrl(court.googleMapsUrl);
+    if (court.image) {
+      setCoverImage(court.image);
+    }
+    setShowSuggestions(false);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!courtName.trim()) {
       alert('Vui lòng nhập tên sân cầu!');
       return;
     }
+
+    const finalMapsUrl =
+      googleMapsUrl.trim() ||
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        `${courtName.trim()} ${address.trim()} ${district}`.trim()
+      )}`;
 
     const newMatch: MatchPost = {
       id: `match-${Date.now()}`,
@@ -102,6 +144,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       hostPhone: currentUser.phone,
       hostBadge: 'Host mới ⭐ 5.0',
       coverImage: coverImage.trim() || getDefaultCourtImage(courtName.trim(), district),
+      googleMapsUrl: finalMapsUrl,
       notes: notes.trim(),
       createdAt: 'Vừa xong',
     };
@@ -145,18 +188,83 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
               />
             </div>
 
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">
-                Tên sân cầu lông <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={courtName}
-                onChange={(e) => setCourtName(e.target.value)}
-                placeholder="VD: Sân Cầu Lông Viettel, Kỳ Hòa, Ga Trực Thăng..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-emerald-500"
-              />
+            {/* Tên sân cầu lông kèm Autocomplete */}
+            <div className="relative">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                  Tên sân cầu lông <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+                  <Navigation className="w-3 h-3" />
+                  Gõ để tự điền Quận & Địa chỉ
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={courtName}
+                  onChange={(e) => handleCourtNameChange(e.target.value)}
+                  onFocus={() => {
+                    if (suggestions.length > 0) setShowSuggestions(true);
+                  }}
+                  placeholder="Gõ tên sân: Celadon, Tên Lửa, Viettel, Tam Bình..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-emerald-500 bg-white"
+                />
+                {courtName && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCourtName('');
+                      setSuggestions([]);
+                      setShowSuggestions(false);
+                      setGoogleMapsUrl('');
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Suggestions Dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-40 divide-y divide-slate-100 max-h-60 overflow-y-auto">
+                  <div className="px-3 py-1.5 bg-slate-50 text-[10px] font-bold text-slate-500 flex items-center justify-between">
+                    <span>SÂN GỢI Ý TRÊN GOOGLE MAPS</span>
+                    <span className="text-emerald-700">Bấm để tự điền 1-chạm</span>
+                  </div>
+                  {suggestions.map((court) => (
+                    <button
+                      key={court.id}
+                      type="button"
+                      onClick={() => handleSelectCourt(court)}
+                      className="w-full px-3 py-2.5 text-left hover:bg-emerald-50/80 transition-colors flex items-start gap-2.5 group"
+                    >
+                      <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-slate-900 truncate">
+                          {court.name}
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate">
+                          {court.address} • <span className="font-semibold text-emerald-700">{court.district}</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md shrink-0">
+                        Chọn
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Badge thông báo đã liên kết Google Maps */}
+              {googleMapsUrl && (
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium mt-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Đã tự động lấy vị trí & link dẫn đường Google Maps cho sân này</span>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">

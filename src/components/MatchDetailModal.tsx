@@ -11,6 +11,7 @@ import {
   Trash2,
   Zap,
   CheckCircle,
+  Navigation,
 } from 'lucide-react';
 import { getDefaultCourtImage } from '../supabase';
 
@@ -117,12 +118,30 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
           <div>
             <h2 className="text-lg font-bold text-slate-900 leading-snug">{match.title}</h2>
             <div className="mt-2.5 p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-              <div className="flex items-start gap-2 text-xs">
-                <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                <div>
-                  <div className="font-bold text-slate-800">{match.courtName}</div>
-                  <div className="text-slate-500">{match.address}</div>
+              <div className="flex items-start justify-between gap-3 text-xs">
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold text-slate-800">{match.courtName}</div>
+                    <div className="text-slate-500">{match.address}</div>
+                  </div>
                 </div>
+
+                <a
+                  href={
+                    match.googleMapsUrl ||
+                    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      `${match.courtName} ${match.address} ${match.district}`.trim()
+                    )}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200/80 flex items-center gap-1.5 transition-all shadow-2xs active:scale-95"
+                  title="Mở Google Maps dẫn đường tới sân"
+                >
+                  <Navigation className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
+                  Chỉ đường
+                </a>
               </div>
 
               <div className="flex items-center gap-4 pt-2 border-t border-slate-200/60 text-xs text-slate-600">

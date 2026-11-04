@@ -90,6 +90,7 @@ export function getDefaultCourtImage(courtName: string, district?: string): stri
 
 export function toMatchPost(row: DbMatchRow): MatchPost {
   let coverImage = '';
+  let googleMapsUrl = '';
   let cleanNotes = row.notes || '';
 
   const imgMatch = cleanNotes.match(/\[IMG:(https?:\/\/[^\]]+)\]/);
@@ -98,6 +99,15 @@ export function toMatchPost(row: DbMatchRow): MatchPost {
     cleanNotes = cleanNotes.replace(/\[IMG:https?:\/\/[^\]]+\]/, '').trim();
   } else {
     coverImage = getDefaultCourtImage(row.court_name, row.district);
+  }
+
+  const mapMatch = cleanNotes.match(/\[MAP:(https?:\/\/[^\]]+)\]/);
+  if (mapMatch) {
+    googleMapsUrl = mapMatch[1];
+    cleanNotes = cleanNotes.replace(/\[MAP:https?:\/\/[^\]]+\]/, '').trim();
+  } else {
+    const query = encodeURIComponent(`${row.court_name} ${row.address || ''} ${row.district}`.trim());
+    googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
   }
 
   return {
@@ -124,6 +134,7 @@ export function toMatchPost(row: DbMatchRow): MatchPost {
     hostPhone: row.host_phone,
     hostBadge: row.host_badge || 'Host uy tín ⭐ 5.0',
     coverImage,
+    googleMapsUrl,
     notes: cleanNotes,
     createdAt: row.created_at,
   };
@@ -131,6 +142,9 @@ export function toMatchPost(row: DbMatchRow): MatchPost {
 
 export function toDbRow(match: MatchPost): DbMatchRow {
   let formattedNotes = match.notes || '';
+  if (match.googleMapsUrl && match.googleMapsUrl.startsWith('http')) {
+    formattedNotes = `[MAP:${match.googleMapsUrl}] ${formattedNotes}`.trim();
+  }
   if (match.coverImage && match.coverImage.startsWith('http')) {
     formattedNotes = `[IMG:${match.coverImage}] ${formattedNotes}`.trim();
   }

@@ -54,7 +54,7 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState('Tất cả');
   const [onlyAvailableSlots, setOnlyAvailableSlots] = useState(false);
 
-  const districts = ['Tất cả', 'Quận 10', 'Tân Bình', 'Gò Vấp', 'Bình Thạnh', 'Phú Nhuận', 'Quận 7', 'Thủ Đức'];
+  const districts = ['Tất cả', 'Tân Phú', 'Bình Tân', 'Tân Bình', 'Thủ Đức', 'Quận 10', 'Gò Vấp', 'Bình Thạnh', 'Phú Nhuận', 'Quận 7'];
   const dates = ['Tất cả', 'Hôm nay', 'Ngày mai', 'Chủ Nhật'];
   const levels = ['Tất cả', 'Hợp trình của tôi', 'Newbie', 'Yếu', 'Trung Bình', 'Khá (Bán chuyên)'];
 
