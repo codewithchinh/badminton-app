@@ -35,6 +35,7 @@
   - Bổ sung Click Outside và phím Escape để tự đóng dropdown gợi ý (`CreateMatchModal.tsx`).
   - Khắc phục lỗi lệch link Maps: tự động reset link Maps khi Host thay đổi tên sân sau khi chọn (`CreateMatchModal.tsx`).
   - Tối ưu `min-w-0 flex-1 break-words` chống tràn layout nút "Chỉ đường" trên màn hình điện thoại nhỏ (`MatchDetailModal.tsx`).
+  - Tích hợp Browser History API & Hardware Back Button (`popstate`): Cho phép người dùng bấm nút Quay về (Back) trên điện thoại để đóng modal xem kèo/tạo kèo/bộ lọc thay vì bị văng khỏi trang web (`App.tsx`).
 - [x] **T010**: Commit và push lên nhánh `main` của repository GitHub.
 - [x] **T011**: Kiểm tra Vercel CI/CD xác nhận production live đạt HTTP 200 tại `https://timvanglai.io.vn`.
 

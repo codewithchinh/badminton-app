@@ -77,6 +77,136 @@ export default function App() {
     setSearchQuery('');
   };
 
+  // ================= BROWSER HISTORY & MOBILE HARDWARE BACK NAVIGATION =================
+  const openModalWithHash = (hash: string, stateObj: any = {}) => {
+    if (window.location.hash !== hash) {
+      window.history.pushState({ ...stateObj, modalHash: hash }, '', hash);
+    }
+  };
+
+  const closeModalWithHash = (hash: string, closeAction: () => void) => {
+    if (window.location.hash === hash || window.location.hash.startsWith(hash)) {
+      window.history.back();
+    } else {
+      closeAction();
+    }
+  };
+
+  const handleOpenMatchDetail = (match: MatchPost) => {
+    setSelectedMatch(match);
+    setIsDetailOpen(true);
+    openModalWithHash(`#match-${match.id}`, { modal: 'match-detail', matchId: match.id });
+  };
+
+  const handleCloseMatchDetail = () => {
+    closeModalWithHash('#match-', () => {
+      setIsDetailOpen(false);
+      setSelectedMatch(null);
+    });
+  };
+
+  const handleOpenCreateMatch = () => {
+    if (!session) {
+      handleOpenAuth();
+    } else {
+      setIsCreateOpen(true);
+      openModalWithHash('#create', { modal: 'create-match' });
+    }
+  };
+
+  const handleCloseCreateMatch = () => {
+    closeModalWithHash('#create', () => setIsCreateOpen(false));
+  };
+
+  const handleOpenMobileFilter = () => {
+    setIsMobileFilterOpen(true);
+    openModalWithHash('#filter', { modal: 'filter' });
+  };
+
+  const handleCloseMobileFilter = () => {
+    closeModalWithHash('#filter', () => setIsMobileFilterOpen(false));
+  };
+
+  const handleOpenAuth = () => {
+    setIsAuthOpen(true);
+    openModalWithHash('#auth', { modal: 'auth' });
+  };
+
+  const handleCloseAuth = () => {
+    closeModalWithHash('#auth', () => setIsAuthOpen(false));
+  };
+
+  const handleOpenProfile = () => {
+    if (!session) {
+      handleOpenAuth();
+    } else {
+      setIsProfileOpen(true);
+      openModalWithHash('#profile', { modal: 'profile' });
+    }
+  };
+
+  const handleCloseProfile = () => {
+    closeModalWithHash('#profile', () => setIsProfileOpen(false));
+  };
+
+  // Listen to browser Back button & popstate events
+  useEffect(() => {
+    const handlePopState = () => {
+      const hash = window.location.hash;
+
+      // 1. Match Detail Modal
+      if (hash.startsWith('#match-')) {
+        const matchId = hash.replace('#match-', '');
+        const target = matches.find((m) => m.id === matchId);
+        if (target) {
+          setSelectedMatch(target);
+          setIsDetailOpen(true);
+        }
+      } else {
+        setIsDetailOpen(false);
+        setSelectedMatch(null);
+      }
+
+      // 2. Create Match Modal
+      if (hash === '#create') {
+        setIsCreateOpen(true);
+      } else {
+        setIsCreateOpen(false);
+      }
+
+      // 3. Mobile Filter Drawer
+      if (hash === '#filter') {
+        setIsMobileFilterOpen(true);
+      } else {
+        setIsMobileFilterOpen(false);
+      }
+
+      // 4. Auth Modal
+      if (hash === '#auth') {
+        setIsAuthOpen(true);
+      } else {
+        setIsAuthOpen(false);
+      }
+
+      // 5. Profile Modal
+      if (hash === '#profile') {
+        setIsProfileOpen(true);
+      } else {
+        setIsProfileOpen(false);
+      }
+    };
+
+    // Check on initial load
+    if (window.location.hash) {
+      handlePopState();
+    }
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [matches]);
+
   // Handle User Logged In
   const handleUserLoggedIn = async (user: any) => {
     const meta = user.user_metadata || {};
@@ -499,13 +629,7 @@ export default function App() {
             <div className="flex items-center gap-2.5 sm:gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  if (!session) {
-                    setIsAuthOpen(true);
-                  } else {
-                    setIsCreateOpen(true);
-                  }
-                }}
+                onClick={handleOpenCreateMatch}
                 className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -517,7 +641,7 @@ export default function App() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsProfileOpen(true)}
+                    onClick={handleOpenProfile}
                     className="flex items-center gap-2.5 p-1 sm:p-1.5 sm:pl-3 rounded-full bg-slate-100 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 transition-all cursor-pointer"
                   >
                     <div className="text-right hidden sm:block">
@@ -547,7 +671,7 @@ export default function App() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => setIsAuthOpen(true)}
+                  onClick={handleOpenAuth}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-300 hover:border-emerald-500 text-slate-800 font-bold text-xs sm:text-sm shadow-2xs hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
                 >
                   <LogIn className="w-4 h-4 text-emerald-600" />
@@ -619,7 +743,7 @@ export default function App() {
             {/* Filter Drawer Button */}
             <button
               type="button"
-              onClick={() => setIsMobileFilterOpen(true)}
+              onClick={handleOpenMobileFilter}
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border shadow-2xs cursor-pointer ${
                 activeFiltersCount > 0
                   ? 'bg-emerald-600 text-white border-emerald-600'
@@ -810,13 +934,7 @@ export default function App() {
               {/* Host button on desktop */}
               <button
                 type="button"
-                onClick={() => {
-                  if (!session) {
-                    setIsAuthOpen(true);
-                  } else {
-                    setIsCreateOpen(true);
-                  }
-                }}
+                onClick={handleOpenCreateMatch}
                 className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" /> Đăng Kèo Mới
@@ -847,13 +965,7 @@ export default function App() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!session) {
-                        setIsAuthOpen(true);
-                      } else {
-                        setIsCreateOpen(true);
-                      }
-                    }}
+                    onClick={handleOpenCreateMatch}
                     className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
                   >
                     + Đăng kèo ngay
@@ -868,10 +980,7 @@ export default function App() {
                     match={m}
                     currentUser={currentUser}
                     onJoin={handleToggleJoin}
-                    onSelect={(match) => {
-                      setSelectedMatch(match);
-                      setIsDetailOpen(true);
-                    }}
+                    onSelect={handleOpenMatchDetail}
                   />
                 ))}
               </div>
@@ -913,13 +1022,7 @@ export default function App() {
 
         <button
           type="button"
-          onClick={() => {
-            if (!session) {
-              setIsAuthOpen(true);
-            } else {
-              setIsCreateOpen(true);
-            }
-          }}
+          onClick={handleOpenCreateMatch}
           className="flex flex-col items-center -mt-6 group"
         >
           <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-600/30 active:scale-95 transition-all">
@@ -941,13 +1044,7 @@ export default function App() {
 
         <button
           type="button"
-          onClick={() => {
-            if (!session) {
-              setIsAuthOpen(true);
-            } else {
-              setIsProfileOpen(true);
-            }
-          }}
+          onClick={handleOpenProfile}
           className="flex flex-col items-center gap-1 text-slate-400"
         >
           <User className="w-5 h-5" />
@@ -960,7 +1057,7 @@ export default function App() {
         <div className="lg:hidden fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs p-0 animate-in fade-in duration-150">
           <div
             className="fixed inset-0"
-            onClick={() => setIsMobileFilterOpen(false)}
+            onClick={handleCloseMobileFilter}
           />
           <div className="relative bg-white w-full max-w-lg rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl z-10 overflow-hidden animate-in slide-in-from-bottom duration-200">
             {/* Drawer Header */}
@@ -976,7 +1073,7 @@ export default function App() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsMobileFilterOpen(false)}
+                onClick={handleCloseMobileFilter}
                 className="w-8 h-8 rounded-full bg-slate-200/70 hover:bg-slate-300 flex items-center justify-center text-slate-600 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -1090,7 +1187,7 @@ export default function App() {
               </button>
               <button
                 type="button"
-                onClick={() => setIsMobileFilterOpen(false)}
+                onClick={handleCloseMobileFilter}
                 className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-98 transition-all text-center cursor-pointer"
               >
                 Xem {filteredMatches.length} kèo phù hợp
@@ -1103,8 +1200,8 @@ export default function App() {
       {/* ================= MODALS ================= */}
       <AuthModal
         isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        onSuccess={() => setIsAuthOpen(false)}
+        onClose={handleCloseAuth}
+        onSuccess={handleCloseAuth}
       />
 
       <ResetPasswordModal
@@ -1119,7 +1216,7 @@ export default function App() {
         match={selectedMatch}
         currentUser={currentUser}
         isOpen={isDetailOpen}
-        onClose={() => setIsDetailOpen(false)}
+        onClose={handleCloseMatchDetail}
         onToggleJoin={handleToggleJoin}
         onRemovePlayer={handleRemovePlayer}
       />
@@ -1127,7 +1224,7 @@ export default function App() {
       <CreateMatchModal
         isOpen={isCreateOpen}
         currentUser={currentUser}
-        onClose={() => setIsCreateOpen(false)}
+        onClose={handleCloseCreateMatch}
         onCreate={handleCreateMatch}
       />
 
@@ -1145,15 +1242,12 @@ export default function App() {
         isOpen={isProfileOpen}
         user={currentUser}
         matches={matches}
-        onClose={() => setIsProfileOpen(false)}
+        onClose={handleCloseProfile}
         onRetakeSurvey={() => {
-          setIsProfileOpen(false);
+          handleCloseProfile();
           setIsOnboardingOpen(true);
         }}
-        onSelectMatch={(match) => {
-          setSelectedMatch(match);
-          setIsDetailOpen(true);
-        }}
+        onSelectMatch={handleOpenMatchDetail}
       />
     </div>
   );
