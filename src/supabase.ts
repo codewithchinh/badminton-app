@@ -52,22 +52,22 @@ export const COURT_PRESET_IMAGES: { id: string; name: string; url: string; match
     url: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=800&auto=format&fit=crop&q=80',
   },
   {
-    id: 'vdv-smash',
-    name: 'VĐV Super Dan Smash',
-    matchKey: 'kỳ hòa',
-    url: 'https://images.unsplash.com/photo-1613918431703-aa503e91a03e?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'lee-chong-wei',
-    name: 'Huyền Thoại Lee Chong Wei',
-    matchKey: 'khang an',
-    url: 'https://images.unsplash.com/photo-1599474924187-334a405be655?w=800&auto=format&fit=crop&q=80',
-  },
-  {
     id: 'trai-cau-long',
     name: 'Cầu Lông & Cây Vợt Thi Đấu',
     matchKey: 'bình minh',
     url: 'https://images.unsplash.com/photo-1622163642998-1ea32b0bbc67?w=800&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'san-thi-dau',
+    name: 'Sân Trong Nhà Chuẩn BWF',
+    matchKey: 'kỳ hòa',
+    url: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'vot-cau-long',
+    name: 'Không Gian Thể Thao Cầu Lông',
+    matchKey: 'khang an',
+    url: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=800&auto=format&fit=crop&q=80',
   },
 ];
 
@@ -153,6 +153,8 @@ export function toMatchPost(row: DbMatchRow): MatchPost {
     isUrgent: extraMeta.isUrgent,
     announcement: extraMeta.announcement,
     bankInfo: extraMeta.bankInfo,
+    isLocked: !!extraMeta.isLocked,
+    waitlist: Array.isArray(extraMeta.waitlist) ? extraMeta.waitlist : [],
   };
 }
 
@@ -167,6 +169,8 @@ export function toDbRow(match: MatchPost): DbMatchRow {
   if (typeof match.isUrgent === 'boolean') metaToSave.isUrgent = match.isUrgent;
   if (match.announcement) metaToSave.announcement = match.announcement;
   if (match.updatedAt) metaToSave.updatedAt = match.updatedAt;
+  if (typeof match.isLocked === 'boolean') metaToSave.isLocked = match.isLocked;
+  if (match.waitlist && match.waitlist.length > 0) metaToSave.waitlist = match.waitlist;
 
   if (Object.keys(metaToSave).length > 0) {
     formattedNotes = `[META:${encodeURIComponent(JSON.stringify(metaToSave))}] ${formattedNotes}`.trim();
@@ -203,6 +207,39 @@ export function toDbRow(match: MatchPost): DbMatchRow {
     host_phone: match.hostPhone,
     host_badge: match.hostBadge,
     notes: formattedNotes,
-    created_at: new Date().toISOString(),
+    created_at: match.createdAt || new Date().toISOString(),
   };
+}
+
+// Báo cáo vi phạm (Bug 4 & Point 25 Fix: lưu bền vững vào LocalStorage & Supabase)
+export interface MatchReport {
+  id: string;
+  matchId: string;
+  matchTitle?: string;
+  reporterId?: string;
+  reporterName?: string;
+  reason: string;
+  createdAt: string;
+}
+
+export function saveMatchReport(report: Omit<MatchReport, 'id' | 'createdAt'>): MatchReport {
+  const newReport: MatchReport = {
+    id: `rep_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    ...report,
+    createdAt: new Date().toISOString(),
+  };
+  try {
+    const existing = JSON.parse(localStorage.getItem('timvanglai_reports') || '[]');
+    existing.unshift(newReport);
+    localStorage.setItem('timvanglai_reports', JSON.stringify(existing));
+  } catch {}
+  return newReport;
+}
+
+export function getSavedReports(): MatchReport[] {
+  try {
+    return JSON.parse(localStorage.getItem('timvanglai_reports') || '[]');
+  } catch {
+    return [];
+  }
 }

@@ -105,7 +105,7 @@ export default function App() {
   };
 
   // Active Bottom Tab on mobile: 'feed' | 'my-matches' | 'profile'
-  const [activeTab, setActiveTab] = useState<'feed' | 'my-matches' | 'profile'>('feed');
+  const [activeTab, setActiveTab] = useState<'feed' | 'my-matches' | 'bookmarks' | 'profile'>('feed');
 
   // Filters state with preferred district memory
   const [searchQuery, setSearchQuery] = useState('');
@@ -663,6 +663,18 @@ export default function App() {
     if (alreadyJoined) {
       executeToggleJoin(matchId);
     } else {
+      if (targetMatch.isLocked) {
+        alert('Kèo này Host đã tạm ngưng nhận thêm người!');
+        return;
+      }
+
+      // Gender warning check (Bug 8 Fix)
+      if (targetMatch.targetGender === 'female' && currentUser.gender === 'male') {
+        if (!window.confirm('⚠️ Chú ý: Bài đăng này Host ghi chú [🙋‍♀️ CHỈ TUYỂN NỮ]!\n\nBạn có chắc chắn muốn đăng ký giữ slot?')) return;
+      } else if (targetMatch.targetGender === 'male' && currentUser.gender === 'female') {
+        if (!window.confirm('⚠️ Chú ý: Bài đăng này Host ghi chú [🙋‍♂️ CHỈ TUYỂN NAM]!\n\nBạn có chắc chắn muốn đăng ký slot này?')) return;
+      }
+
       setJoinPhoneInput(currentUser.phone || '');
       setConfirmJoinMatch(targetMatch);
     }
@@ -687,8 +699,6 @@ export default function App() {
 
   // Host removes a player
   const handleRemovePlayer = async (matchId: string, playerId: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn hủy slot của người chơi này?')) return;
-
     const targetMatch = matches.find((m) => m.id === matchId);
     if (!targetMatch) return;
 
@@ -708,8 +718,8 @@ export default function App() {
     }
   };
 
-  // Host locks 1 offline guest slot
-  const handleAddGuest = async (matchId: string) => {
+  // Host locks 1 offline guest slot with custom name & level (Point 11 Fix)
+  const handleAddGuest = async (matchId: string, customName?: string, customLevel?: any) => {
     const targetMatch = matches.find((m) => m.id === matchId);
     if (!targetMatch) return;
     if (targetMatch.joinedPlayers.length >= targetMatch.totalSlots) {
@@ -720,9 +730,9 @@ export default function App() {
     const guestCount = targetMatch.joinedPlayers.filter((p) => p.name.includes('Khách')).length + 1;
     const guestPlayer = {
       userId: `guest-${Date.now()}`,
-      name: `Khách ngoài #${guestCount}`,
+      name: customName || `Khách ngoài #${guestCount}`,
       avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-      level: targetMatch.minLevel,
+      level: customLevel || targetMatch.minLevel,
       phone: '',
       joinedAt: 'Vừa xong',
       isPaidDeposit: true,
@@ -741,6 +751,57 @@ export default function App() {
         .eq('id', matchId);
     } catch (e) {
       console.error('Failed to add guest to Supabase:', e);
+    }
+  };
+
+  // Host toggles lock match / roster (Point 16 Fix)
+  const handleToggleLockMatch = async (matchId: string) => {
+    const target = matches.find((m) => m.id === matchId);
+    if (!target) return;
+    const updatedMatch: MatchPost = { ...target, isLocked: !target.isLocked };
+    setMatches((prev) => prev.map((m) => (m.id === matchId ? updatedMatch : m)));
+    if (selectedMatch?.id === matchId) setSelectedMatch(updatedMatch);
+    try {
+      await supabase.from('matches').update(toDbRow(updatedMatch)).eq('id', matchId);
+    } catch (e) {
+      console.error('Failed to toggle lock match:', e);
+    }
+  };
+
+  // Quick update announcement (Point 13 Fix)
+  const handleQuickUpdateAnnouncement = async (matchId: string, text: string) => {
+    const target = matches.find((m) => m.id === matchId);
+    if (!target) return;
+    const updatedMatch: MatchPost = { ...target, announcement: text || undefined };
+    setMatches((prev) => prev.map((m) => (m.id === matchId ? updatedMatch : m)));
+    if (selectedMatch?.id === matchId) setSelectedMatch(updatedMatch);
+    try {
+      await supabase.from('matches').update(toDbRow(updatedMatch)).eq('id', matchId);
+    } catch (e) {
+      console.error('Failed to update announcement:', e);
+    }
+  };
+
+  // Register waitlist (Point 1 Fix)
+  const handleJoinWaitlist = async (matchId: string, phone: string) => {
+    const target = matches.find((m) => m.id === matchId);
+    if (!target) return;
+    const waitlistEntry = {
+      userId: currentUser.id,
+      name: currentUser.name || 'Người chơi',
+      avatar: currentUser.avatar,
+      phone: phone || currentUser.phone || '',
+      joinedAt: 'Vừa xong',
+      level: currentUser.level,
+    };
+    const updatedWaitlist = [...(target.waitlist || []), waitlistEntry];
+    const updatedMatch: MatchPost = { ...target, waitlist: updatedWaitlist };
+    setMatches((prev) => prev.map((m) => (m.id === matchId ? updatedMatch : m)));
+    if (selectedMatch?.id === matchId) setSelectedMatch(updatedMatch);
+    try {
+      await supabase.from('matches').update(toDbRow(updatedMatch)).eq('id', matchId);
+    } catch (e) {
+      console.error('Failed to update waitlist:', e);
     }
   };
 
@@ -819,6 +880,10 @@ export default function App() {
         if (!isJoined) return false;
       }
 
+      if (activeTab === 'bookmarks') {
+        if (!bookmarkedIds.includes(m.id)) return false;
+      }
+
       if (selectedDistrict !== 'Tất cả') {
         const d = selectedDistrict;
         const matchD = m.district;
@@ -829,11 +894,26 @@ export default function App() {
         if (!isMatch) return false;
       }
 
+      // Intelligent date matching (Bug 7 Fix)
       if (selectedDate !== 'Tất cả') {
         const cleanDatePattern = selectedDate.split(' (')[0].trim().toLowerCase();
         const matchDateLower = m.date.toLowerCase();
-        if (!matchDateLower.includes(cleanDatePattern)) {
-          return false;
+        if (cleanDatePattern === 'hôm nay') {
+          const dayNames = ['chủ nhật', 'thứ 2', 'thứ 3', 'thứ 4', 'thứ 5', 'thứ 6', 'thứ 7'];
+          const todayName = dayNames[new Date().getDay()];
+          const isToday = matchDateLower.includes('hôm nay') || matchDateLower.includes(todayName);
+          if (!isToday) return false;
+        } else if (cleanDatePattern === 'ngày mai') {
+          const tmrw = new Date();
+          tmrw.setDate(tmrw.getDate() + 1);
+          const dayNames = ['chủ nhật', 'thứ 2', 'thứ 3', 'thứ 4', 'thứ 5', 'thứ 6', 'thứ 7'];
+          const tmrwName = dayNames[tmrw.getDay()];
+          const isTmrw = matchDateLower.includes('ngày mai') || matchDateLower.includes(tmrwName);
+          if (!isTmrw) return false;
+        } else {
+          if (!matchDateLower.includes(cleanDatePattern)) {
+            return false;
+          }
         }
       }
 
@@ -879,11 +959,11 @@ export default function App() {
         }
       }
 
-      // Vietnamese normalization full text search
+      // Full text search expanded (Point 9: Host name, Shuttle, Amenities)
       if (searchQuery.trim()) {
         const qNorm = normalizeVietnamese(searchQuery.trim());
         const matchFullNorm = normalizeVietnamese(
-          `${m.title} ${m.courtName} ${m.district} ${m.address}`
+          `${m.title} ${m.courtName} ${m.district} ${m.address} ${m.hostName} ${m.shuttleType} ${(m.amenities || []).join(' ')}`
         );
         const tokens = qNorm.split(' ').filter(Boolean);
         const matchesAll = tokens.every((token) => matchFullNorm.includes(token));
@@ -924,6 +1004,7 @@ export default function App() {
     onlyAvailableSlots,
     searchQuery,
     currentUser,
+    bookmarkedIds,
   ]);
 
   return (
@@ -1006,6 +1087,46 @@ export default function App() {
                   </button>
                 )}
               </div>
+            </div>
+
+            {/* Desktop Navigation Tabs (Bug 1 & Point 21 Fix) */}
+            <div className="hidden lg:flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200/80 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('feed');
+                  handleResetFilters();
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'feed'
+                    ? 'bg-white text-emerald-800 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                🏸 Khám phá
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('my-matches')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'my-matches'
+                    ? 'bg-white text-emerald-800 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                📅 Kèo của tôi
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('bookmarks')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'bookmarks'
+                    ? 'bg-white text-emerald-800 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                ⭐ Đã lưu
+              </button>
             </div>
 
             {/* Desktop Actions + Profile */}
@@ -1416,31 +1537,90 @@ export default function App() {
               </button>
             </div>
 
-            {/* Grid of Matches */}
+            {/* Grid of Matches with Context-Aware Empty State (Bug 2 & Point 22 Fix) */}
             {filteredMatches.length === 0 ? (
-              <div className="text-center py-20 bg-white rounded-3xl p-8 border border-slate-200/80 shadow-xs">
-                <div className="text-4xl mb-3">🏸</div>
-                <h4 className="text-base font-bold text-slate-800">Không tìm thấy kèo phù hợp</h4>
-                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                  Bạn có thể thử xóa bớt điều kiện lọc hoặc tự mình đứng ra làm Host đăng một kèo mới!
-                </p>
-                <div className="mt-4 flex items-center justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handleResetFilters}
-                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 cursor-pointer transition-colors"
-                  >
-                    Xóa tất cả bộ lọc
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleOpenCreateMatch}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer transition-colors"
-                  >
-                    + Đăng kèo ngay
-                  </button>
+              activeTab === 'my-matches' && !session ? (
+                <div className="text-center py-16 bg-white rounded-3xl p-8 border border-emerald-200/80 shadow-xs animate-in fade-in duration-200">
+                  <div className="text-4xl mb-3">🏸</div>
+                  <h4 className="text-base font-extrabold text-slate-800">Bạn chưa đăng nhập</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                    Vui lòng đăng nhập tài khoản để theo dõi danh sách các kèo giao lưu cầu lông mà bạn đã đăng ký giữ slot!
+                  </p>
+                  <div className="mt-4 flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={handleOpenAuth}
+                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white text-xs font-bold shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer"
+                    >
+                      Đăng Nhập Ngay
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : activeTab === 'my-matches' && session ? (
+                <div className="text-center py-16 bg-white rounded-3xl p-8 border border-slate-200/80 shadow-xs animate-in fade-in duration-200">
+                  <div className="text-4xl mb-3">📅</div>
+                  <h4 className="text-base font-extrabold text-slate-800">Bạn chưa giữ slot kèo nào</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                    Hãy quay lại trang Khám phá để chọn sân gần bạn, đúng trình độ và bấm tham gia ngay nhé!
+                  </p>
+                  <div className="mt-4 flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('feed');
+                        handleResetFilters();
+                      }}
+                      className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
+                    >
+                      Khám Phá Kèo Ngay
+                    </button>
+                  </div>
+                </div>
+              ) : activeTab === 'bookmarks' ? (
+                <div className="text-center py-16 bg-white rounded-3xl p-8 border border-slate-200/80 shadow-xs animate-in fade-in duration-200">
+                  <div className="text-4xl mb-3">⭐</div>
+                  <h4 className="text-base font-extrabold text-slate-800">Chưa có bài đăng nào được lưu</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                    Bấm vào biểu tượng bookmark trên các thẻ kèo ngoài trang chủ để lưu lại và theo dõi sau!
+                  </p>
+                  <div className="mt-4 flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('feed');
+                        handleResetFilters();
+                      }}
+                      className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer transition-colors"
+                    >
+                      Quay lại trang chủ
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-20 bg-white rounded-3xl p-8 border border-slate-200/80 shadow-xs">
+                  <div className="text-4xl mb-3">🏸</div>
+                  <h4 className="text-base font-bold text-slate-800">Không tìm thấy kèo phù hợp</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    Bạn có thể thử xóa bớt điều kiện lọc hoặc tự mình đứng ra làm Host đăng một kèo mới!
+                  </p>
+                  <div className="mt-4 flex items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleResetFilters}
+                      className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 cursor-pointer transition-colors"
+                    >
+                      Xóa tất cả bộ lọc
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenCreateMatch}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer transition-colors"
+                    >
+                      + Đăng kèo ngay
+                    </button>
+                  </div>
+                </div>
+              )
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-4">
                 {filteredMatches.map((m) => (
@@ -1877,6 +2057,9 @@ export default function App() {
         onAddGuest={handleAddGuest}
         onCloneMatch={handleCloneMatch}
         onTogglePlayerDeposit={handleTogglePlayerDeposit}
+        onToggleLockMatch={handleToggleLockMatch}
+        onQuickUpdateAnnouncement={handleQuickUpdateAnnouncement}
+        onJoinWaitlist={handleJoinWaitlist}
       />
 
       <CreateMatchModal

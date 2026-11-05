@@ -68,6 +68,15 @@ export interface MatchPost {
   refundPolicy?: string;
   isUrgent?: boolean;
   announcement?: string;
+  isLocked?: boolean; // Host tạm ngưng nhận người (khóa roster)
+  waitlist?: {
+    userId: string;
+    name: string;
+    avatar: string;
+    phone: string;
+    joinedAt: string;
+    level: SkillLevel;
+  }[];
   bankInfo?: {
     bankName: string;
     accountNumber: string;

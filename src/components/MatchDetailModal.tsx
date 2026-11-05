@@ -24,7 +24,7 @@ import {
   Flag,
   Info,
 } from 'lucide-react';
-import { getDefaultCourtImage, SVG_BADMINTON_FALLBACK } from '../supabase';
+import { getDefaultCourtImage, SVG_BADMINTON_FALLBACK, saveMatchReport } from '../supabase';
 
 interface MatchDetailModalProps {
   match: MatchPost | null;
@@ -35,9 +35,12 @@ interface MatchDetailModalProps {
   onRemovePlayer?: (matchId: string, playerId: string) => void;
   onEditMatch?: (match: MatchPost) => void;
   onDeleteMatch?: (matchId: string) => void;
-  onAddGuest?: (matchId: string) => void;
+  onAddGuest?: (matchId: string, customName?: string, customLevel?: any) => void;
   onCloneMatch?: (match: MatchPost) => void;
   onTogglePlayerDeposit?: (matchId: string, playerId: string) => void;
+  onToggleLockMatch?: (matchId: string) => void;
+  onQuickUpdateAnnouncement?: (matchId: string, text: string) => void;
+  onJoinWaitlist?: (matchId: string, phone: string) => void;
 }
 
 export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
@@ -52,6 +55,9 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   onAddGuest,
   onCloneMatch,
   onTogglePlayerDeposit,
+  onToggleLockMatch,
+  onQuickUpdateAnnouncement,
+  onJoinWaitlist,
 }) => {
   const [copiedBank, setCopiedBank] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
@@ -226,8 +232,15 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
       'Vui lòng nhập lý do phản ánh (VD: Host không nghe máy, thông tin sai giờ/giá, kèo ảo...):'
     );
     if (reason && reason.trim()) {
+      const rep = saveMatchReport({
+        matchId: match.id,
+        matchTitle: match.title,
+        reporterId: currentUser.id,
+        reporterName: currentUser.name,
+        reason: reason.trim(),
+      });
       setIsReported(true);
-      alert('Cảm ơn bạn! Ban quản trị TimVangLai đã tiếp nhận phản ánh và sẽ rà soát ngay.');
+      alert(`Cảm ơn bạn! Ban quản trị đã tiếp nhận phản ánh (Mã: #${rep.id.slice(-6)}) và sẽ rà soát ngay.`);
     }
   };
 
@@ -250,6 +263,35 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     alert(`Đã sao chép ${phones.length} số điện thoại để bạn tạo nhóm Zalo hoặc gọi dặn dò!`);
   };
 
+  const handleCopyWelcomeMessage = () => {
+    const text = `🏸 Chào bạn! Mình là Host kèo tại ${match.courtName}.\n⏰ Thời gian: ${match.startTime} - ${match.endTime} (${match.date})\n📍 Địa chỉ: ${match.address}\n🏸 Sân: ${match.courtNumber || 'Sẽ báo tại sân'}\nLoại cầu: ${match.shuttleType}\n\nHẹn gặp bạn đúng giờ nhé!`;
+    navigator.clipboard.writeText(text);
+    alert('Đã sao chép mẫu tin nhắn chào mừng để gửi Zalo cho người chơi!');
+  };
+
+  const handlePromptAddGuest = () => {
+    if (!onAddGuest) return;
+    const name = window.prompt('Nhập tên bạn bè hoặc khách ngoài đời (VD: Bảo - Bạn Host, Nam...):', 'Khách ngoài');
+    if (name === null) return;
+    onAddGuest(match.id, name.trim() || 'Khách ngoài');
+  };
+
+  const handleQuickEditAnnouncement = () => {
+    const newAnn = window.prompt('Nhập thông báo khẩn từ Host gửi đến người chơi:', match.announcement || '');
+    if (newAnn !== null && onQuickUpdateAnnouncement) {
+      onQuickUpdateAnnouncement(match.id, newAnn.trim());
+    }
+  };
+
+  const handleRegisterWaitlist = () => {
+    if (!onJoinWaitlist) return;
+    const phone = window.prompt('Nhập số điện thoại / Zalo để Host liên hệ khi có người hủy slot:', currentUser.phone || '');
+    if (phone && phone.trim()) {
+      onJoinWaitlist(match.id, phone.trim());
+      alert('Đã đăng ký hàng chờ thành công! Host sẽ gọi bạn ngay khi có người rút lui.');
+    }
+  };
+
   const handleDeleteWithConfirm = () => {
     if (window.confirm('Bạn có chắc chắn muốn hủy / xóa kèo giao lưu này? Các thành viên sẽ thấy kèo bị đóng.')) {
       if (onDeleteMatch) {
@@ -260,8 +302,16 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   };
 
   const handleCancelJoinWithConfirm = () => {
-    if (window.confirm('Bạn có chắc chắn muốn hủy giữ slot này? Hành động này sẽ nhường chỗ cho người khác.')) {
-      onToggleJoin(match.id);
+    if (match.bankInfo && match.bankInfo.depositAmount) {
+      const policyMsg = match.refundPolicy ? `\n\n📌 Quy định hoàn cọc của Host: "${match.refundPolicy}"` : '';
+      const ok = window.confirm(
+        `Bạn có chắc chắn muốn hủy giữ slot này?${policyMsg}\n\nVui lòng liên hệ Zalo Host (${match.hostPhone}) để được nhận lại tiền cọc theo quy định.`
+      );
+      if (ok) onToggleJoin(match.id);
+    } else {
+      if (window.confirm('Bạn có chắc chắn muốn hủy giữ slot này? Hành động này sẽ nhường chỗ cho người khác.')) {
+        onToggleJoin(match.id);
+      }
     }
   };
 
@@ -361,85 +411,139 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
         <div className="p-5 overflow-y-auto space-y-5 flex-1">
           {/* Ghim thông báo khẩn của Host nếu có (Point 13) */}
           {match.announcement && (
-            <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200/90 text-xs text-amber-950 flex items-start gap-2.5 shadow-2xs animate-in fade-in duration-150">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <div className="min-w-0 flex-1">
-                <div className="font-extrabold flex items-center justify-between text-amber-900">
-                  <span>THÔNG BÁO TỪ HOST:</span>
-                  <span className="text-[10px] bg-amber-200/80 text-amber-800 font-bold px-1.5 py-0.5 rounded">Ghim</span>
-                </div>
-                <div className="mt-1 leading-relaxed text-amber-900 font-medium">
-                  {match.announcement}
+            <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200/90 text-xs text-amber-950 flex items-start justify-between gap-2.5 shadow-2xs animate-in fade-in duration-150">
+              <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <div className="font-extrabold flex items-center gap-2 text-amber-900">
+                    <span>THÔNG BÁO TỪ HOST:</span>
+                    <span className="text-[10px] bg-amber-200/80 text-amber-800 font-bold px-1.5 py-0.5 rounded">Ghim</span>
+                  </div>
+                  <div className="mt-1 leading-relaxed text-amber-900 font-medium">
+                    {match.announcement}
+                  </div>
                 </div>
               </div>
+              {isHost && onQuickUpdateAnnouncement && (
+                <button
+                  type="button"
+                  onClick={handleQuickEditAnnouncement}
+                  className="px-2 py-1 bg-white hover:bg-amber-100/80 border border-amber-300 rounded-lg text-[10px] font-bold text-amber-800 shrink-0 cursor-pointer"
+                >
+                  Sửa
+                </button>
+              )}
             </div>
           )}
 
           {/* Host Management Toolbar */}
           {isHost && (
-            <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
-                <span>Bạn là Host của kèo này</span>
+            <div className="space-y-2">
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <span>Quản lý kèo (Dành cho Host)</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleCopyWelcomeMessage}
+                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all"
+                    title="Sao chép mẫu tin nhắn chào mừng để gửi Zalo"
+                  >
+                    <span>💬 Chép mẫu Zalo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyAllPhones}
+                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all"
+                    title="Sao chép toàn bộ SĐT để tạo nhóm Zalo"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-blue-600" />
+                    Chép SĐT
+                  </button>
+                  {onToggleLockMatch && (
+                    <button
+                      type="button"
+                      onClick={() => onToggleLockMatch(match.id)}
+                      className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all ${
+                        match.isLocked
+                          ? 'bg-amber-100 border-amber-300 text-amber-900'
+                          : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                      }`}
+                      title="Khóa tạm ngưng nhận người hoặc mở lại"
+                    >
+                      {match.isLocked ? '🔓 Mở lại tuyển' : '🔒 Khóa slot'}
+                    </button>
+                  )}
+                  {onAddGuest && remainingSlots > 0 && (
+                    <button
+                      type="button"
+                      onClick={handlePromptAddGuest}
+                      className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-emerald-100/60 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all"
+                      title="Khóa 1 slot cho bạn bè hoặc khách ngoài đời"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      + Khách ngoài
+                    </button>
+                  )}
+                  {onCloneMatch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onCloneMatch(match);
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all"
+                      title="Nhân bản bài đăng này cho ngày đánh tiếp theo"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-emerald-600" />
+                      Nhân bản
+                    </button>
+                  )}
+                  {onEditMatch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onEditMatch(match);
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-slate-600" />
+                      Sửa
+                    </button>
+                  )}
+                  {onDeleteMatch && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteWithConfirm}
+                      className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      Đóng
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleCopyAllPhones}
-                  className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all"
-                  title="Sao chép toàn bộ SĐT để tạo nhóm Zalo"
-                >
-                  <Phone className="w-3.5 h-3.5 text-blue-600" />
-                  Chép DS SĐT
-                </button>
-                {onCloneMatch && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      onCloneMatch(match);
-                    }}
-                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all"
-                    title="Nhân bản bài đăng này cho ngày đánh tiếp theo"
-                  >
-                    <Copy className="w-3.5 h-3.5 text-emerald-600" />
-                    Nhân bản kèo
-                  </button>
-                )}
-                {onAddGuest && remainingSlots > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => onAddGuest(match.id)}
-                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-emerald-100/60 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all"
-                    title="Khóa 1 slot cho bạn bè hoặc khách ngoài đời"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    + Thêm khách ngoài
-                  </button>
-                )}
-                {onEditMatch && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      onEditMatch(match);
-                    }}
-                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 text-slate-600" />
-                    Sửa kèo
-                  </button>
-                )}
-                {onDeleteMatch && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteWithConfirm}
-                    className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95 transition-all"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                    Đóng kèo
-                  </button>
-                )}
+
+              {/* Bảng tổng kết tài chính mini cho Host (Point 12) */}
+              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Tiền cọc đã thu:</span>
+                  <span className="font-extrabold text-emerald-700 text-xs sm:text-sm">
+                    {((match.bankInfo?.depositAmount || 0) * match.joinedPlayers.filter((p) => p.isPaidDeposit).length).toLocaleString('vi-VN')} đ
+                    <span className="text-[10px] text-slate-400 font-normal ml-1">
+                      ({match.joinedPlayers.filter((p) => p.isPaidDeposit).length} đã cọc)
+                    </span>
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500 block text-[11px]">Dự toán thu cả sân ({match.totalSlots} slot):</span>
+                  <span className="font-bold text-slate-800 text-xs sm:text-sm">
+                    ~{(Number(match.priceMale) * Math.ceil(match.totalSlots * 0.6) + Number(match.priceFemale) * Math.floor(match.totalSlots * 0.4)).toLocaleString('vi-VN')} đ
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -626,11 +730,22 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* Contact buttons */}
+              {/* Contact buttons (Point 8) */}
               <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(match.hostPhone);
+                    alert(`Đã sao chép số điện thoại Host: ${match.hostPhone}`);
+                  }}
+                  className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-emerald-600 hover:border-emerald-300 shadow-xs cursor-pointer active:scale-95"
+                  title="Sao chép số điện thoại Host"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
                 <a
                   href={`tel:${cleanHostPhone}`}
-                  className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-emerald-600 hover:border-emerald-300 shadow-xs cursor-pointer"
+                  className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-emerald-600 hover:border-emerald-300 shadow-xs cursor-pointer active:scale-95"
                   title="Gọi điện"
                 >
                   <Phone className="w-4 h-4" />
@@ -639,7 +754,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   href={`https://zalo.me/${cleanHostPhone}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold flex items-center gap-1 shadow-xs hover:bg-blue-700 cursor-pointer"
+                  className="px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold flex items-center gap-1 shadow-xs hover:bg-blue-700 cursor-pointer active:scale-95"
                 >
                   <MessageCircle className="w-4 h-4" />
                   Chat Zalo
@@ -662,13 +777,25 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 <Users className="w-4 h-4 text-emerald-600" />
                 Danh sách người chơi ({match.joinedPlayers.length}/{match.totalSlots})
               </h3>
-              {remainingSlots > 0 ? (
-                <span className="text-xs font-bold text-emerald-700">
-                  Còn trống {remainingSlots} chỗ
-                </span>
-              ) : (
-                <span className="text-xs font-bold text-rose-600">Đã đủ quân số</span>
-              )}
+              <div className="flex items-center gap-2">
+                {match.targetGender === 'female' && (
+                  <span className="text-[11px] font-bold text-pink-700 bg-pink-50 px-2 py-0.5 rounded-md border border-pink-200">
+                    Chỉ tuyển Nữ
+                  </span>
+                )}
+                {match.targetGender === 'male' && (
+                  <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                    Chỉ tuyển Nam
+                  </span>
+                )}
+                {remainingSlots > 0 ? (
+                  <span className="text-xs font-bold text-emerald-700">
+                    Còn trống {remainingSlots} chỗ
+                  </span>
+                ) : (
+                  <span className="text-xs font-bold text-rose-600">Đã đủ quân số</span>
+                )}
+              </div>
             </div>
 
             <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
@@ -727,13 +854,20 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                         ) : null
                       )}
 
-                      {/* Host action: Remove player if mismatch */}
+                      {/* Host action: Remove player with deposit check (Point 14) */}
                       {isHost && !isMe && onRemovePlayer && (
                         <button
                           type="button"
-                          onClick={() => onRemovePlayer(match.id, player.userId)}
+                          onClick={() => {
+                            if (player.isPaidDeposit) {
+                              if (!window.confirm('⚠️ Chú ý: Thành viên này ĐÃ CỌC TIỀN! Nhớ hoàn cọc theo quy định nhé.\n\nBạn có chắc chắn muốn xóa thành viên này?')) return;
+                            } else {
+                              if (!window.confirm('Bạn có chắc muốn xóa thành viên này khỏi danh sách?')) return;
+                            }
+                            onRemovePlayer(match.id, player.userId);
+                          }}
                           className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer"
-                          title="Hủy slot nếu không hợp trình"
+                          title="Hủy slot thành viên"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -744,7 +878,39 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               })}
             </div>
 
-            {/* Báo cáo bài đăng (Point 8) */}
+            {/* Waitlist queue display (Point 1) */}
+            {match.waitlist && match.waitlist.length > 0 && (
+              <div className="mt-4 p-3 bg-amber-50/70 border border-amber-200 rounded-2xl">
+                <div className="text-xs font-bold text-amber-900 flex items-center justify-between mb-2">
+                  <span>📋 Danh sách hàng chờ ({match.waitlist.length} người đang đợi):</span>
+                  <span className="text-[10px] font-normal text-amber-700">Host liên hệ khi có người rút lui</span>
+                </div>
+                <div className="space-y-1.5">
+                  {match.waitlist.map((w, wIdx) => (
+                    <div key={w.userId + wIdx} className="flex items-center justify-between bg-white/90 p-2 rounded-xl text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 font-bold text-[11px]">#{wIdx + 1}</span>
+                        <span className="font-semibold text-slate-800">{w.name}</span>
+                        <span className="text-[10px] text-slate-500">({w.level})</span>
+                      </div>
+                      {isHost && w.phone && (
+                        <a
+                          href={`https://zalo.me/${w.phone.replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1"
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                          Gọi Zalo: {w.phone}
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Báo cáo bài đăng (Bug 4 & Point 25) */}
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
               <span>Gặp sự cố với bài đăng này?</span>
               <button
@@ -772,7 +938,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               <button
                 type="button"
                 onClick={handleCancelJoinWithConfirm}
-                className="px-4 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold cursor-pointer transition-colors"
+                className="px-4 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold cursor-pointer transition-colors active:scale-95"
               >
                 Hủy tham gia
               </button>
@@ -785,18 +951,36 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
             >
               Kèo này đã kết thúc
             </button>
+          ) : match.isLocked ? (
+            <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-center">
+              <span className="text-xs font-bold text-amber-900 block">🔒 Host đã tạm ngưng nhận thêm người</span>
+              <span className="text-[11px] text-amber-700 block mt-0.5">Nhóm đã chốt đội hình hoặc đang giữ slot nội bộ.</span>
+            </div>
           ) : isFull ? (
-            <button
-              type="button"
-              disabled
-              className="w-full py-3 rounded-2xl bg-slate-200 text-slate-500 font-bold text-sm cursor-not-allowed"
-            >
-              Kèo này đã đủ người ({match.totalSlots}/{match.totalSlots})
-            </button>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleRegisterWaitlist}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 text-white font-bold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
+              >
+                <span>📋 Đăng ký hàng chờ (Nhận cuộc gọi khi có slot trống)</span>
+              </button>
+              <div className="text-center text-[11px] text-slate-400">
+                Kèo đã đủ {match.totalSlots}/{match.totalSlots} người. {match.waitlist?.length ? `Có ${match.waitlist.length} người đang xếp hàng chờ.` : 'Bạn sẽ là người đầu tiên trong hàng chờ.'}
+              </div>
+            </div>
           ) : (
             <button
               type="button"
-              onClick={() => onToggleJoin(match.id)}
+              onClick={() => {
+                // Gender warning check (Point 2)
+                if (match.targetGender === 'female' && currentUser.gender === 'male') {
+                  if (!window.confirm('⚠️ Chú ý: Bài đăng này Host ghi rõ [🙋‍♀️ CHỈ TUYỂN NỮ]!\n\nBạn có chắc chắn muốn tham gia slot này không?')) return;
+                } else if (match.targetGender === 'male' && currentUser.gender === 'female') {
+                  if (!window.confirm('⚠️ Chú ý: Bài đăng này Host ghi rõ [🙋‍♂️ CHỈ TUYỂN NAM]!\n\nBạn có chắc chắn muốn tham gia slot này không?')) return;
+                }
+                onToggleJoin(match.id);
+              }}
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
             >
               <Zap className="w-4 h-4 fill-current" />

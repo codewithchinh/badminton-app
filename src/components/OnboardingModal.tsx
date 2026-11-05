@@ -22,6 +22,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const [experience, setExperience] = useState(user.experienceYears || '6 tháng - 1 năm');
   const [level, setLevel] = useState<SkillLevel>(user.level || 'TB Yếu');
   const [hasPlayedOthers, setHasPlayedOthers] = useState<boolean>(user.hasPlayedOtherCourts ?? false);
+  const [gender, setGender] = useState<'male' | 'female'>(user.gender || 'male');
 
   // Sync state whenever modal is opened or user prop updates (e.g. from Google login)
   useEffect(() => {
@@ -40,6 +41,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       }
       if (typeof user.hasPlayedOtherCourts === 'boolean') {
         setHasPlayedOthers(user.hasPlayedOtherCourts);
+      }
+      if (user.gender) {
+        setGender(user.gender);
       }
     }
   }, [isOpen, user]);
@@ -89,6 +93,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       experienceYears: experience,
       level: level,
       hasPlayedOtherCourts: hasPlayedOthers,
+      gender,
       isOnboarded: true,
     });
   };
@@ -261,6 +266,36 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   <p className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1 font-medium">
                     ✓ Tự động điền theo tài khoản của bạn. Bạn có thể sửa lại nếu muốn.
                   </p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 block mb-1">
+                    Giới tính của bạn
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setGender('male')}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
+                        gender === 'male'
+                          ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-xs'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      🙋‍♂️ Nam
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGender('female')}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
+                        gender === 'female'
+                          ? 'bg-pink-50 border-pink-500 text-pink-700 shadow-xs'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      🙋‍♀️ Nữ
+                    </button>
+                  </div>
                 </div>
 
                 <div>

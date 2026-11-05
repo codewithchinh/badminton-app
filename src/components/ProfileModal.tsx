@@ -30,10 +30,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user.name);
   const [phone, setPhone] = useState(user.phone || '');
+  const [gender, setGender] = useState<'male' | 'female'>(user.gender || 'male');
 
   useEffect(() => {
     setName(user.name);
     setPhone(user.phone || '');
+    setGender(user.gender || 'male');
     setIsEditing(false);
   }, [user, isOpen]);
 
@@ -66,6 +68,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       onUpdateProfile({
         name: name.trim(),
         phone: cleanPhone ? formatPhoneNumber(cleanPhone) : '',
+        gender,
       });
     }
     setIsEditing(false);
@@ -112,6 +115,27 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     placeholder="Số điện thoại / Zalo"
                     className="w-full px-2.5 py-1 text-xs text-slate-800 bg-white rounded-lg focus:outline-emerald-500"
                   />
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <span className="text-[11px] text-white/90 font-medium">Giới tính:</span>
+                    <button
+                      type="button"
+                      onClick={() => setGender('male')}
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-all ${
+                        gender === 'male' ? 'bg-white text-emerald-800 shadow-2xs' : 'bg-white/20 text-white hover:bg-white/30'
+                      }`}
+                    >
+                      🙋‍♂️ Nam
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGender('female')}
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-all ${
+                        gender === 'female' ? 'bg-white text-pink-700 shadow-2xs' : 'bg-white/20 text-white hover:bg-white/30'
+                      }`}
+                    >
+                      🙋‍♀️ Nữ
+                    </button>
+                  </div>
                   <div className="flex items-center gap-2 pt-1">
                     <button
                       type="button"

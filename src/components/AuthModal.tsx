@@ -10,7 +10,7 @@ interface AuthModalProps {
 
 type AuthMode = 'signin' | 'signup' | 'forgot';
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [mode, setMode] = useState<AuthMode>('signin');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -181,6 +181,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
         // If email confirmation is disabled on Supabase, session is created immediately
         if (data.session) {
+          if (onSuccess) onSuccess();
           onClose();
         } else if (data.user) {
           // Email confirmation is required
@@ -204,6 +205,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         });
 
         if (error) throw error;
+        if (onSuccess) onSuccess();
         onClose();
       } catch (err: any) {
         setErrorMsg(translateAuthError(err.message || 'Đăng nhập không thành công.'));

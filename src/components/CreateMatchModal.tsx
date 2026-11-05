@@ -124,6 +124,8 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const autocompleteRef = useRef<HTMLDivElement>(null);
 
   const [date, setDate] = useState('Hôm nay');
+  const [isCustomDate, setIsCustomDate] = useState(false);
+  const [customDateValue, setCustomDateValue] = useState('');
   const [startTime, setStartTime] = useState('18:00');
   const [endTime, setEndTime] = useState('20:00');
   const [courtNumber, setCourtNumber] = useState('');
@@ -254,8 +256,37 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
         setAccountName('');
         setDepositAmount(30000);
       }
+
+      // Load Host default preferences (Point 20)
+      try {
+        const savedDefaults = localStorage.getItem('timvanglai_host_defaults');
+        if (savedDefaults) {
+          const parsed = JSON.parse(savedDefaults);
+          if (parsed.priceMale) setPriceMale(parsed.priceMale);
+          if (parsed.priceFemale) setPriceFemale(parsed.priceFemale);
+          if (parsed.shuttleType) setShuttleType(parsed.shuttleType);
+          if (parsed.district) setDistrict(parsed.district);
+          if (parsed.refundPolicy) setRefundPolicy(parsed.refundPolicy);
+        }
+      } catch {}
     }
   }, [isOpen, editMatch, cloneMatch]);
+
+  const upcomingDatesList = React.useMemo(() => {
+    const list = [
+      { label: 'Hôm nay', value: 'Hôm nay' },
+      { label: 'Ngày mai', value: 'Ngày mai' },
+    ];
+    const dayNames = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+    const now = new Date();
+    for (let i = 2; i < 8; i++) {
+      const d = new Date(now);
+      d.setDate(now.getDate() + i);
+      const dayStr = `${dayNames[d.getDay()]} (${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')})`;
+      list.push({ label: dayStr, value: dayStr });
+    }
+    return list;
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -360,14 +391,31 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       return;
     }
 
-    if (startTime >= endTime) {
-      alert('Giờ bắt đầu phải trước giờ kết thúc!');
+    if (!startTime || !endTime) {
+      alert('Vui lòng chọn giờ bắt đầu và giờ kết thúc!');
+      return;
+    }
+
+    if (startTime === endTime) {
+      alert('Giờ bắt đầu và kết thúc không được trùng nhau!');
       return;
     }
 
     if ((SKILL_LEVEL_SCORES[minLevel] ?? 0) > (SKILL_LEVEL_SCORES[maxLevel] ?? 9)) {
       alert('Trình độ tối thiểu không được cao hơn trình độ tối đa!');
       return;
+    }
+
+    let finalDate = date;
+    if (isCustomDate) {
+      if (!customDateValue) {
+        alert('Vui lòng chọn ngày đánh từ lịch!');
+        return;
+      }
+      const [y, m, d] = customDateValue.split('-');
+      const dayObj = new Date(Number(y), Number(m) - 1, Number(d));
+      const dayNames = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+      finalDate = `${dayNames[dayObj.getDay()]} (${d}/${m})`;
     }
 
     const finalImage = coverImage.trim() || getDefaultCourtImage(courtName.trim(), district);
@@ -401,6 +449,20 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
 
     const finalShuttleType = isCustomShuttle ? (customShuttle.trim() || 'VinaStar Đỏ') : shuttleType;
 
+    // Lưu cấu hình tạo kèo mặc định của Host (Point 20)
+    try {
+      localStorage.setItem(
+        'timvanglai_host_defaults',
+        JSON.stringify({
+          priceMale: Number(priceMale) || 60000,
+          priceFemale: Number(priceFemale) || 40000,
+          shuttleType: finalShuttleType,
+          district,
+          refundPolicy,
+        })
+      );
+    } catch {}
+
     if (editMatch && onUpdate) {
       const updatedMatch: MatchPost = {
         ...editMatch,
@@ -408,7 +470,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
         courtName: courtName.trim(),
         district,
         address: address.trim() || `${courtName}, ${district}`,
-        date,
+        date: finalDate,
         startTime,
         endTime,
         courtNumber,
@@ -440,7 +502,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       courtName: courtName.trim(),
       district,
       address: address.trim() || `${courtName}, ${district}`,
-      date,
+      date: finalDate,
       startTime,
       endTime,
       courtNumber,
@@ -707,40 +769,77 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
           </div>
 
           {/* Ngày & Giờ */}
-          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Ngày đánh</label>
-              <select
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500 bg-white"
-              >
-                <option value="Hôm nay">Hôm nay</option>
-                <option value="Ngày mai">Ngày mai</option>
-                <option value="Thứ Bảy">Thứ Bảy</option>
-                <option value="Chủ Nhật">Chủ Nhật</option>
-              </select>
+          <div className="pt-2 border-t border-slate-100">
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Ngày đánh</label>
+                <select
+                  value={isCustomDate ? 'custom' : date}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'custom') {
+                      setIsCustomDate(true);
+                    } else {
+                      setIsCustomDate(false);
+                      setDate(val);
+                    }
+                  }}
+                  className="w-full px-2 py-2 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500 bg-white"
+                >
+                  {upcomingDatesList.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                  <option value="custom">📅 Chọn ngày khác...</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Bắt đầu</label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full px-2 py-2 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500 bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Kết thúc</label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full px-2 py-2 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500 bg-white"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Bắt đầu</label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500"
-              />
-            </div>
+            {/* Custom Date Input if selected (Bug 6 Fix) */}
+            {isCustomDate && (
+              <div className="mt-2 p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200">
+                <label className="text-[11px] font-bold text-emerald-900 block mb-1">
+                  Chọn ngày đánh cụ thể từ lịch:
+                </label>
+                <input
+                  type="date"
+                  autoFocus
+                  min={new Date().toISOString().split('T')[0]}
+                  value={customDateValue}
+                  onChange={(e) => setCustomDateValue(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-xl border border-emerald-300 text-xs bg-white focus:outline-emerald-500 font-medium"
+                />
+              </div>
+            )}
 
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Kết thúc</label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full px-2.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500"
-              />
-            </div>
+            {/* Overnight match badge (Bug 5 Fix) */}
+            {startTime && endTime && startTime > endTime && (
+              <div className="mt-2 px-2.5 py-1.5 rounded-xl bg-teal-50 border border-teal-200 text-teal-800 text-[11px] font-medium flex items-center gap-1.5">
+                <span>🌙</span>
+                <span>Ca đánh đêm (kết thúc vào rạng sáng hôm sau)</span>
+              </div>
+            )}
           </div>
 
           {/* Loại cầu & Số người cần tuyển */}
@@ -1036,8 +1135,11 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                       onChange={(e) => setRefundPolicy(e.target.value)}
                       className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-emerald-500 font-medium"
                     >
+                      <option value="Hoàn cọc 100% nếu báo trước 1 tiếng">Hoàn cọc 100% nếu báo trước 1 tiếng</option>
                       <option value="Hoàn cọc 100% nếu báo trước 2 tiếng">Hoàn cọc 100% nếu báo trước 2 tiếng</option>
+                      <option value="Hoàn cọc nếu báo trước 3 tiếng">Hoàn cọc nếu báo trước 3 tiếng</option>
                       <option value="Hoàn cọc nếu báo trước 4 tiếng">Hoàn cọc nếu báo trước 4 tiếng</option>
+                      <option value="Hoàn cọc nếu báo trước 6 tiếng">Hoàn cọc nếu báo trước 6 tiếng</option>
                       <option value="Chỉ hoàn cọc khi tìm được người thay thế">Chỉ hoàn cọc khi tìm được người thay thế</option>
                       <option value="Không hoàn cọc nếu hủy sát giờ">Không hoàn cọc nếu hủy sát giờ</option>
                     </select>
