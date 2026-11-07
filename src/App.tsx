@@ -31,7 +31,6 @@ import {
   ArrowUp,
   RotateCcw,
   MapPin,
-  Calendar,
   ChevronDown,
   Award,
   Users,
@@ -126,9 +125,7 @@ export default function App() {
     }
   });
   const [selectedLevel, setSelectedLevel] = useState('Tất cả');
-  const [selectedDate, setSelectedDate] = useState('Tất cả');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<'Tất cả' | 'morning' | 'afternoon' | 'evening'>('Tất cả');
-  const [selectedPriceRange, setSelectedPriceRange] = useState<'Tất cả' | 'under50' | '50to80' | 'above80'>('Tất cả');
   const [onlyAvailableSlots, setOnlyAvailableSlots] = useState(false);
 
   const handleSelectDistrict = (d: string) => {
@@ -161,29 +158,6 @@ export default function App() {
     'Hóc Môn',
   ];
 
-  // Dynamic upcoming date options: Tự động tính toán theo lịch thực tế (realtime calendar)
-  // Lấy chính xác tên Thứ cho ngày hôm nay và ngày mai
-  const dayNamesShort = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-  const todayDayName = dayNamesShort[new Date().getDay()];
-  const tmrwDayName = dayNamesShort[(new Date().getDay() + 1) % 7];
-
-  // Danh sách ngày tới (12 ngày tiếp theo để luôn bao quát đủ 2 dịp cuối tuần Thứ 7 & CN)
-  const upcomingDateOptions = useMemo(() => {
-    const opts = ['Tất cả', 'Hôm nay', 'Ngày mai', 'Cuối tuần'];
-    const fullDayNames = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-    const now = new Date();
-    for (let i = 2; i <= 12; i++) {
-      const d = new Date(now);
-      d.setDate(now.getDate() + i);
-      const dayName = fullDayNames[d.getDay()];
-      const dayStr = String(d.getDate()).padStart(2, '0');
-      const monthStr = String(d.getMonth() + 1).padStart(2, '0');
-      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-      opts.push(`${dayName} (${dayStr}/${monthStr})${isWeekend ? ' ⭐ Cuối tuần' : ''}`);
-    }
-    return opts;
-  }, []);
-
   const levels = ['Tất cả', 'Hợp trình của tôi', 'Newbie', 'Yếu', 'Trung Bình', 'Khá (Bán chuyên)'];
 
   // Count active filters
@@ -191,20 +165,16 @@ export default function App() {
     let count = 0;
     if (selectedDistrict !== 'Tất cả') count++;
     if (selectedLevel !== 'Tất cả') count++;
-    if (selectedDate !== 'Tất cả') count++;
     if (selectedTimeSlot !== 'Tất cả') count++;
-    if (selectedPriceRange !== 'Tất cả') count++;
     if (onlyAvailableSlots) count++;
     return count;
-  }, [selectedDistrict, selectedLevel, selectedDate, selectedTimeSlot, selectedPriceRange, onlyAvailableSlots]);
+  }, [selectedDistrict, selectedLevel, selectedTimeSlot, onlyAvailableSlots]);
 
   // Reset all filters
   const handleResetFilters = () => {
     handleSelectDistrict('Tất cả');
     setSelectedLevel('Tất cả');
-    setSelectedDate('Tất cả');
     setSelectedTimeSlot('Tất cả');
-    setSelectedPriceRange('Tất cả');
     setOnlyAvailableSlots(false);
     setSearchQuery('');
   };
@@ -950,76 +920,11 @@ export default function App() {
         if (!isMatch) return false;
       }
 
-      // Intelligent date matching (Hỗ trợ Hôm nay, Ngày mai, Cuối tuần và Ngày cụ thể)
-      if (selectedDate !== 'Tất cả') {
-        const matchDateLower = m.date.toLowerCase();
-        const now = new Date();
-        const fullDayNames = ['chủ nhật', 'thứ 2', 'thứ 3', 'thứ 4', 'thứ 5', 'thứ 6', 'thứ 7'];
-        const todayDayIndex = now.getDay();
-        const todayName = fullDayNames[todayDayIndex];
-        const tmrw = new Date(now);
-        tmrw.setDate(now.getDate() + 1);
-        const tmrwName = fullDayNames[tmrw.getDay()];
-
-        if (selectedDate === 'Hôm nay') {
-          const isToday = matchDateLower.includes('hôm nay') || matchDateLower.includes(todayName);
-          if (!isToday) return false;
-        } else if (selectedDate === 'Ngày mai') {
-          const isTmrw = matchDateLower.includes('ngày mai') || matchDateLower.includes(tmrwName);
-          if (!isTmrw) return false;
-        } else if (selectedDate === 'Cuối tuần') {
-          // Lọc các kèo diễn ra vào Thứ 7 hoặc Chủ Nhật
-          const isExplicitWeekend =
-            matchDateLower.includes('thứ 7') ||
-            matchDateLower.includes('thứ bảy') ||
-            matchDateLower.includes('chủ nhật') ||
-            matchDateLower.includes('cn');
-          const isTodayWeekend = (todayDayIndex === 0 || todayDayIndex === 6) && matchDateLower.includes('hôm nay');
-          const isTmrwWeekend = (tmrw.getDay() === 0 || tmrw.getDay() === 6) && matchDateLower.includes('ngày mai');
-          if (!isExplicitWeekend && !isTodayWeekend && !isTmrwWeekend) return false;
-        } else {
-          // Bóc tách ngày tháng dạng dd/mm (VD: "14/11" từ "Thứ 7 (14/11) ⭐ Cuối tuần")
-          const targetDmMatch = selectedDate.match(/(\d{1,2}\/\d{1,2})/);
-          if (targetDmMatch) {
-            const targetDm = targetDmMatch[1];
-            const matchDmMatch = m.date.match(/(\d{1,2}\/\d{1,2})/);
-            if (matchDmMatch) {
-              const normDm = (str: string) => str.split('/').map((n) => parseInt(n, 10)).join('/');
-              if (normDm(matchDmMatch[1]) !== normDm(targetDm)) {
-                return false;
-              }
-            } else {
-              const [tDay, tMon] = targetDm.split('/').map((n) => parseInt(n, 10));
-              const isTargetToday = tDay === now.getDate() && tMon === now.getMonth() + 1;
-              const isTargetTmrw = tDay === tmrw.getDate() && tMon === tmrw.getMonth() + 1;
-              if (isTargetToday && matchDateLower.includes('hôm nay')) {
-                // match
-              } else if (isTargetTmrw && matchDateLower.includes('ngày mai')) {
-                // match
-              } else {
-                const cleanDay = selectedDate.split(' (')[0].trim().toLowerCase();
-                if (!matchDateLower.includes(cleanDay)) return false;
-              }
-            }
-          } else {
-            const cleanDay = selectedDate.split(' (')[0].trim().toLowerCase();
-            if (!matchDateLower.includes(cleanDay)) return false;
-          }
-        }
-      }
-
       if (selectedTimeSlot !== 'Tất cả') {
         const startHour = parseInt(m.startTime.split(':')[0], 10) || 0;
         if (selectedTimeSlot === 'morning' && startHour >= 12) return false;
         if (selectedTimeSlot === 'afternoon' && (startHour < 12 || startHour >= 17)) return false;
         if (selectedTimeSlot === 'evening' && startHour < 17) return false;
-      }
-
-      if (selectedPriceRange !== 'Tất cả') {
-        const minPrice = Math.min(m.priceMale, m.priceFemale);
-        if (selectedPriceRange === 'under50' && minPrice >= 50000) return false;
-        if (selectedPriceRange === '50to80' && (minPrice < 50000 || minPrice > 80000)) return false;
-        if (selectedPriceRange === 'above80' && m.priceMale <= 80000) return false;
       }
 
       if (onlyAvailableSlots) {
@@ -1088,9 +993,7 @@ export default function App() {
     matches,
     activeTab,
     selectedDistrict,
-    selectedDate,
     selectedTimeSlot,
-    selectedPriceRange,
     selectedLevel,
     onlyAvailableSlots,
     searchQuery,
@@ -1387,32 +1290,6 @@ export default function App() {
               )}
             </button>
 
-            {/* Quick Date: Hôm nay */}
-            <button
-              type="button"
-              onClick={() => setSelectedDate(selectedDate === 'Hôm nay' ? 'Tất cả' : 'Hôm nay')}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
-                selectedDate === 'Hôm nay'
-                  ? 'bg-emerald-600 text-white border-emerald-600 font-bold'
-                  : 'bg-white text-slate-700 border-slate-200 active:bg-slate-100'
-              }`}
-            >
-              📅 Hôm nay ({todayDayName})
-            </button>
-
-            {/* Quick Date: Cuối tuần */}
-            <button
-              type="button"
-              onClick={() => setSelectedDate(selectedDate === 'Cuối tuần' ? 'Tất cả' : 'Cuối tuần')}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
-                selectedDate === 'Cuối tuần'
-                  ? 'bg-amber-600 text-white border-amber-600 font-bold'
-                  : 'bg-amber-50/80 text-amber-900 border-amber-200 active:bg-amber-100'
-              }`}
-            >
-              ⚡ Cuối tuần (T7, CN)
-            </button>
-
             {/* Quick Available Slots */}
             <button
               type="button"
@@ -1565,107 +1442,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* 2. Thời gian đánh */}
-            <div className="pt-2.5 border-t border-slate-100 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                  Ngày chơi
-                </label>
-                {selectedDate !== 'Tất cả' && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDate('Tất cả')}
-                    className="text-[10px] font-semibold text-slate-400 hover:text-rose-500 cursor-pointer"
-                  >
-                    Xóa lọc
-                  </button>
-                )}
-              </div>
-
-              {/* 4 nút nhanh 2x2: Hôm nay (Thứ) / Ngày mai (Thứ) / Cuối tuần / Tất cả */}
-              <div className="grid grid-cols-2 gap-1">
-                <button
-                  type="button"
-                  onClick={() => setSelectedDate(selectedDate === 'Hôm nay' ? 'Tất cả' : 'Hôm nay')}
-                  className={`py-1.5 px-2 rounded-xl text-xs font-semibold text-center transition-all cursor-pointer border flex items-center justify-center gap-1 ${
-                    selectedDate === 'Hôm nay'
-                      ? 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-2xs'
-                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                  }`}
-                >
-                  <span>Hôm nay</span>
-                  <span className="text-[10px] opacity-75 font-normal">({todayDayName})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedDate(selectedDate === 'Ngày mai' ? 'Tất cả' : 'Ngày mai')}
-                  className={`py-1.5 px-2 rounded-xl text-xs font-semibold text-center transition-all cursor-pointer border flex items-center justify-center gap-1 ${
-                    selectedDate === 'Ngày mai'
-                      ? 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-2xs'
-                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                  }`}
-                >
-                  <span>Ngày mai</span>
-                  <span className="text-[10px] opacity-75 font-normal">({tmrwDayName})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedDate(selectedDate === 'Cuối tuần' ? 'Tất cả' : 'Cuối tuần')}
-                  className={`py-1.5 px-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer border flex items-center justify-center gap-1 ${
-                    selectedDate === 'Cuối tuần'
-                      ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
-                      : 'bg-amber-50/70 hover:bg-amber-100/70 border-amber-200 text-amber-900'
-                  }`}
-                >
-                  <span>⚡ Cuối tuần</span>
-                  <span className="text-[10px] text-amber-800 opacity-80 font-normal">(T7, CN)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedDate('Tất cả')}
-                  className={`py-1.5 px-2 rounded-xl text-xs font-semibold text-center transition-all cursor-pointer border ${
-                    selectedDate === 'Tất cả'
-                      ? 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-2xs'
-                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                  }`}
-                >
-                  Tất cả ngày
-                </button>
-              </div>
-
-              {/* Dropdown ngày cụ thể trong 2 tuần tới (kèm Thứ 7 & CN tuần sau) */}
-              <div className="relative">
-                <select
-                  value={['Tất cả', 'Hôm nay', 'Ngày mai', 'Cuối tuần'].includes(selectedDate) ? '' : selectedDate}
-                  onChange={(e) => {
-                    if (e.target.value) setSelectedDate(e.target.value);
-                  }}
-                  className={`w-full pl-3 pr-7 py-1.5 rounded-xl text-xs font-medium border appearance-none cursor-pointer transition-all ${
-                    !['Tất cả', 'Hôm nay', 'Ngày mai', 'Cuối tuần'].includes(selectedDate)
-                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-bold'
-                      : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-500'
-                  }`}
-                >
-                  <option value="" disabled>
-                    {!['Tất cả', 'Hôm nay', 'Ngày mai', 'Cuối tuần'].includes(selectedDate)
-                      ? `Đang chọn: ${selectedDate}`
-                      : '📅 Chọn ngày khác (có T7 & CN tuần sau)...'}
-                  </option>
-                  {upcomingDateOptions.slice(4).map((dt) => (
-                    <option key={dt} value={dt}>
-                      {dt}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* 3. Ca chơi trong ngày (2x2 cân xứng) */}
+            {/* 2. Ca chơi trong ngày (2x2 cân xứng) */}
             <div className="pt-2.5 border-t border-slate-100 space-y-1.5">
               <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
                 Ca chơi trong ngày
@@ -1693,35 +1470,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* 4. Khoảng chi phí (2x2 cân xứng) */}
-            <div className="pt-2.5 border-t border-slate-100 space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
-                Khoảng chi phí
-              </label>
-              <div className="grid grid-cols-2 gap-1">
-                {[
-                  { label: 'Tất cả giá', val: 'Tất cả' },
-                  { label: '< 50k / slot', val: 'under50' },
-                  { label: '50k - 80k', val: '50to80' },
-                  { label: '> 80k / slot', val: 'above80' },
-                ].map((item) => (
-                  <button
-                    key={item.val}
-                    type="button"
-                    onClick={() => setSelectedPriceRange(item.val as any)}
-                    className={`py-1.5 px-2 rounded-xl text-xs font-semibold text-center transition-all cursor-pointer border ${
-                      selectedPriceRange === item.val
-                        ? 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-2xs'
-                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 5. Trình độ yêu cầu */}
+            {/* 3. Trình độ yêu cầu */}
             <div className="pt-2.5 border-t border-slate-100 space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -2109,105 +1858,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 2. Thời gian đánh */}
-              <div className="pt-3 border-t border-slate-100 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                    Thời gian đánh
-                  </label>
-                  {selectedDate !== 'Tất cả' && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDate('Tất cả')}
-                      className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 cursor-pointer"
-                    >
-                      Xóa lọc
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDate(selectedDate === 'Hôm nay' ? 'Tất cả' : 'Hôm nay')}
-                    className={`py-2 px-2 rounded-xl text-xs font-semibold text-center transition-all cursor-pointer border flex items-center justify-center gap-1 ${
-                      selectedDate === 'Hôm nay'
-                        ? 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-2xs'
-                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    <span>Hôm nay</span>
-                    <span className="text-[10px] opacity-75 font-normal">({todayDayName})</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDate(selectedDate === 'Ngày mai' ? 'Tất cả' : 'Ngày mai')}
-                    className={`py-2 px-2 rounded-xl text-xs font-semibold text-center transition-all cursor-pointer border flex items-center justify-center gap-1 ${
-                      selectedDate === 'Ngày mai'
-                        ? 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-2xs'
-                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    <span>Ngày mai</span>
-                    <span className="text-[10px] opacity-75 font-normal">({tmrwDayName})</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDate(selectedDate === 'Cuối tuần' ? 'Tất cả' : 'Cuối tuần')}
-                    className={`py-2 px-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer border flex items-center justify-center gap-1 ${
-                      selectedDate === 'Cuối tuần'
-                        ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
-                        : 'bg-amber-50/70 hover:bg-amber-100/70 border-amber-200 text-amber-900'
-                    }`}
-                  >
-                    <span>⚡ Cuối tuần</span>
-                    <span className="text-[10px] text-amber-800 opacity-80 font-normal">(T7, CN)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDate('Tất cả')}
-                    className={`py-2 px-2 rounded-xl text-xs font-semibold text-center transition-all cursor-pointer border ${
-                      selectedDate === 'Tất cả'
-                        ? 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-2xs'
-                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    Tất cả các ngày
-                  </button>
-                </div>
-
-                <div className="relative">
-                  <select
-                    value={['Tất cả', 'Hôm nay', 'Ngày mai', 'Cuối tuần'].includes(selectedDate) ? '' : selectedDate}
-                    onChange={(e) => {
-                      if (e.target.value) setSelectedDate(e.target.value);
-                    }}
-                    className={`w-full pl-3 pr-7 py-2 rounded-xl text-xs font-medium border appearance-none cursor-pointer transition-all ${
-                      !['Tất cả', 'Hôm nay', 'Ngày mai', 'Cuối tuần'].includes(selectedDate)
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-bold'
-                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-500'
-                    }`}
-                  >
-                    <option value="" disabled>
-                      {!['Tất cả', 'Hôm nay', 'Ngày mai', 'Cuối tuần'].includes(selectedDate)
-                        ? `Đang chọn: ${selectedDate}`
-                        : '📅 Chọn ngày khác (có T7 & CN tuần sau)...'}
-                    </option>
-                    {upcomingDateOptions.slice(4).map((dt) => (
-                      <option key={dt} value={dt}>
-                        {dt}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 3. Ca chơi trong ngày (2x2 cân xứng) */}
+              {/* 2. Ca chơi trong ngày (2x2 cân xứng) */}
               <div className="pt-3 border-t border-slate-100 space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
                   Ca chơi trong ngày
@@ -2235,35 +1886,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 4. Khoảng chi phí (2x2 cân xứng) */}
-              <div className="pt-3 border-t border-slate-100 space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                  Khoảng chi phí
-                </label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {[
-                    { label: 'Tất cả giá', val: 'Tất cả' },
-                    { label: '< 50k / slot', val: 'under50' },
-                    { label: '50k - 80k', val: '50to80' },
-                    { label: '> 80k / slot', val: 'above80' },
-                  ].map((item) => (
-                    <button
-                      key={item.val}
-                      type="button"
-                      onClick={() => setSelectedPriceRange(item.val as any)}
-                      className={`py-2 px-2 rounded-xl text-xs font-semibold text-center transition-all cursor-pointer border ${
-                        selectedPriceRange === item.val
-                          ? 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-2xs'
-                          : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 5. Trình độ yêu cầu */}
+              {/* 3. Trình độ yêu cầu */}
               <div className="pt-3 border-t border-slate-100 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
