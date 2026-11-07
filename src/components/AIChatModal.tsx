@@ -63,12 +63,23 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_WELCOME_MESSAGE]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
+  const streamTimerRef = useRef<any>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(() => getStoredGeminiKey());
   const [keySavedToast, setKeySavedToast] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Clear timer on unmount
+  useEffect(() => {
+    return () => {
+      if (streamTimerRef.current) {
+        clearInterval(streamTimerRef.current);
+      }
+    };
+  }, []);
 
   // Sync messages when user logs in, logs out, or switches accounts
   useEffect(() => {
@@ -89,14 +100,14 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
     setMessages([INITIAL_WELCOME_MESSAGE]);
   }, [userStorageKey]);
 
-  // Persist messages to user-specific sessionStorage key
+  // Persist messages to user-specific sessionStorage key (only when not streaming)
   useEffect(() => {
-    if (userStorageKey) {
+    if (userStorageKey && !streamingMsgId && !isTyping) {
       try {
         sessionStorage.setItem(userStorageKey, JSON.stringify(messages));
       } catch {}
     }
-  }, [messages, userStorageKey]);
+  }, [messages, userStorageKey, streamingMsgId, isTyping]);
 
   // Auto scroll to bottom
   const scrollToBottom = () => {
@@ -110,13 +121,13 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
         inputRef.current?.focus();
       }, 100);
     }
-  }, [isOpen, isLoggedIn, messages, isTyping]);
+  }, [isOpen, isLoggedIn, messages, isTyping, streamingMsgId]);
 
   if (!isOpen) return null;
 
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputValue).trim();
-    if (!text || isTyping) return;
+    if (!text || isTyping || streamingMsgId !== null) return;
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -130,10 +141,74 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
     setIsTyping(true);
 
     try {
+      const startTime = Date.now();
       const response = await sendChatMessageToAI(text, messages, matches);
-      setMessages((prev) => [...prev, response]);
+
+      // 1. Giả lập độ trễ suy nghĩ tự nhiên (~850ms - 1000ms) để hiện Mascot Thinking
+      const elapsed = Date.now() - startTime;
+      const minThinkingDelay = 850;
+      if (elapsed < minThinkingDelay) {
+        await new Promise((resolve) => setTimeout(resolve, minThinkingDelay - elapsed));
+      }
+
+      // 2. Chuyển sang hiệu ứng gõ chữ (Typewriter Streaming)
+      setIsTyping(false);
+
+      const assistantMsgId = (Date.now() + 1).toString();
+      setStreamingMsgId(assistantMsgId);
+
+      // Thêm message ban đầu với text rỗng
+      const initialAssistantMsg: ChatMessage = {
+        id: assistantMsgId,
+        sender: 'assistant',
+        text: '',
+        timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      setMessages((prev) => [...prev, initialAssistantMsg]);
+
+      // Tốc độ typewriter: chunk 2-4 ký tự mỗi 18ms
+      const fullText = response.text;
+      let charIndex = 0;
+      const chunkSize = fullText.length > 350 ? 5 : fullText.length > 150 ? 3 : 2;
+      const intervalMs = 18;
+
+      await new Promise<void>((resolve) => {
+        streamTimerRef.current = setInterval(() => {
+          charIndex += chunkSize;
+          if (charIndex >= fullText.length) {
+            clearInterval(streamTimerRef.current);
+            streamTimerRef.current = null;
+            // Hoàn tất: Gán đủ text và gắn các action payload (kèo, nháp, prompt)
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId
+                  ? {
+                      ...m,
+                      text: fullText,
+                      matches: response.matches,
+                      draftMatch: response.draftMatch,
+                      suggestedLevel: response.suggestedLevel,
+                      quickPrompts: response.quickPrompts,
+                    }
+                  : m
+              )
+            );
+            setStreamingMsgId(null);
+            resolve();
+          } else {
+            const partialText = fullText.slice(0, charIndex);
+            setMessages((prev) =>
+              prev.map((m) => (m.id === assistantMsgId ? { ...m, text: partialText } : m))
+            );
+            scrollToBottom();
+          }
+        }, intervalMs);
+      });
     } catch (err) {
       console.error('Chat error:', err);
+      setIsTyping(false);
+      setStreamingMsgId(null);
       setMessages((prev) => [
         ...prev,
         {
@@ -143,8 +218,6 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
           timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
-    } finally {
-      setIsTyping(false);
     }
   };
 
@@ -322,6 +395,9 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
                       />
                     );
                   })}
+                  {streamingMsgId === msg.id && (
+                    <span className="inline-block w-1.5 h-3.5 bg-emerald-600 ml-1 translate-y-0.5 animate-pulse rounded-xs" />
+                  )}
                 </div>
 
                 {/* SUGGESTED LEVEL BADGE */}
@@ -493,17 +569,19 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
             </div>
           ))}
 
-          {/* Typing animation */}
+          {/* Typing / Thinking animation */}
           {isTyping && (
-            <div className="flex gap-2.5 items-end">
+            <div className="flex gap-2.5 items-end animate-in fade-in duration-200">
               <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200/80 flex items-center justify-center shadow-xs overflow-hidden shrink-0">
                 <BadmintonMascotBot size="xs" expression="thinking" isAnimated={true} />
               </div>
-              <div className="bg-white border border-emerald-100 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-                <span className="text-[11px] text-emerald-700 font-semibold ml-1.5">Bé Cầu đang tìm sân cho bạn nè...</span>
+              <div className="bg-white border border-emerald-100 rounded-2xl rounded-bl-none px-4 py-2.5 shadow-xs flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+                <span className="text-[11px] text-emerald-800 font-bold ml-1">Bé Cầu đang suy nghĩ nè...</span>
               </div>
             </div>
           )}
@@ -517,32 +595,36 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
             <Sparkles className="w-3 h-3 text-amber-500" /> Bé Cầu gợi ý:
           </span>
           <button
+            disabled={isTyping || streamingMsgId !== null}
             onClick={() => handleSendMessage('Tìm kèo tối nay gần tui trình TB Yếu')}
-            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-medium border border-slate-200 hover:border-emerald-300 transition-all shrink-0 text-[11px] shadow-xs active:scale-95"
+            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-medium border border-slate-200 hover:border-emerald-300 transition-all shrink-0 text-[11px] shadow-xs active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             🏸 Kèo tối nay
           </button>
           <button
+            disabled={isTyping || streamingMsgId !== null}
             onClick={() =>
               handleSendMessage(
                 'Tuyển 2 nam tối nay sân Minkyo Tân Phú 19h-21h, cầu VinaStar Đỏ, giá 60k nam 40k nữ, cọc 20k'
               )
             }
-            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-medium border border-slate-200 hover:border-emerald-300 transition-all shrink-0 text-[11px] shadow-xs active:scale-95"
+            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-medium border border-slate-200 hover:border-emerald-300 transition-all shrink-0 text-[11px] shadow-xs active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             📝 Thử bóc bài Zalo
           </button>
           <button
+            disabled={isTyping || streamingMsgId !== null}
             onClick={() =>
               handleSendMessage('Mình mới chơi được 1 năm, biết đập nhưng thủ còn yếu thì là trình gì?')
             }
-            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-medium border border-slate-200 hover:border-emerald-300 transition-all shrink-0 text-[11px] shadow-xs active:scale-95"
+            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-medium border border-slate-200 hover:border-emerald-300 transition-all shrink-0 text-[11px] shadow-xs active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             🎯 Đo trình độ
           </button>
           <button
+            disabled={isTyping || streamingMsgId !== null}
             onClick={() => handleSendMessage('Giải thích luật giao cầu dưới 1.15m và cách tính điểm')}
-            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-medium border border-slate-200 hover:border-emerald-300 transition-all shrink-0 text-[11px] shadow-xs active:scale-95"
+            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-medium border border-slate-200 hover:border-emerald-300 transition-all shrink-0 text-[11px] shadow-xs active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             ⚖️ Luật giao cầu
           </button>
@@ -563,12 +645,12 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Nói với Bé Cầu: tìm kèo, quăng bài Zalo, hoặc hỏi luật nha..."
-              disabled={isTyping}
-              className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-100/80 focus:bg-white border border-transparent focus:border-emerald-500 text-xs sm:text-sm focus:outline-none transition-all placeholder:text-slate-400 font-medium"
+              disabled={isTyping || streamingMsgId !== null}
+              className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-100/80 focus:bg-white border border-transparent focus:border-emerald-500 text-xs sm:text-sm focus:outline-none transition-all placeholder:text-slate-400 font-medium disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={!inputValue.trim() || isTyping}
+              disabled={!inputValue.trim() || isTyping || streamingMsgId !== null}
               className="w-10 h-10 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white flex items-center justify-center shrink-0 shadow-md hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
             >
               <Send className="w-4 h-4" />
