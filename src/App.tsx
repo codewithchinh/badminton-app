@@ -1172,25 +1172,24 @@ export default function App() {
             </div>
 
             {/* Desktop Actions + Profile */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
               <button
                 type="button"
                 onClick={handleOpenAIChat}
-                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3 sm:py-2 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-800 font-bold text-xs sm:text-sm border border-emerald-200/80 shadow-xs active:scale-95 transition-all cursor-pointer group"
+                className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-800 font-bold text-xs border border-emerald-200/80 shadow-xs active:scale-95 transition-all cursor-pointer group h-10 shrink-0"
                 title="Hỏi Bé Cầu AI (Tìm kèo, Soạn bài, Thẩm định)"
               >
-                <div className="w-6 h-6 -my-1">
+                <div className="w-5 h-5 -my-1 shrink-0">
                   <BadmintonMascotBot size="xs" isAnimated={true} />
                 </div>
-                <span className="hidden sm:inline">Bé Cầu AI</span>
-                <span className="sm:hidden text-[11px]">Bé Cầu</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse hidden sm:inline-block" />
+                <span>Bé Cầu AI</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               </button>
 
               <button
                 type="button"
                 onClick={handleOpenCreateMatch}
-                className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer"
+                className="hidden sm:flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer h-10 shrink-0"
               >
                 <Plus className="w-4 h-4 stroke-[2.5]" />
                 Host Đăng Kèo Mới
@@ -1198,32 +1197,43 @@ export default function App() {
 
               {/* Login or User Profile */}
               {session ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={handleOpenProfile}
-                    className="flex items-center gap-2.5 p-1 sm:p-1.5 sm:pl-3 rounded-full bg-slate-100 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 transition-all cursor-pointer"
+                    className="flex items-center gap-2 sm:gap-2.5 px-2 py-1 sm:py-1 sm:pl-3 sm:pr-1.5 rounded-2xl bg-slate-50 hover:bg-emerald-50/80 border border-slate-200 hover:border-emerald-300 transition-all cursor-pointer shadow-2xs group h-10 shrink-0"
+                    title="Xem trang cá nhân"
                   >
-                    <div className="text-right hidden sm:block">
-                      <div className="text-xs font-bold text-slate-800 leading-tight">
+                    <div className="text-right hidden sm:block min-w-0">
+                      <div className="text-xs font-bold text-slate-800 leading-tight truncate max-w-[100px] md:max-w-[130px] lg:max-w-[160px] group-hover:text-emerald-700 transition-colors">
                         {currentUser.name}
                       </div>
-                      <div className="text-[10px] font-extrabold text-emerald-700 uppercase">
+                      <div className="text-[10px] font-black text-emerald-700 uppercase tracking-tight whitespace-nowrap">
                         Trình: {currentUser.level}
                       </div>
                     </div>
-                    <img
-                      src={currentUser.avatar}
-                      alt={currentUser.name}
-                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-slate-300 shadow-2xs"
-                    />
+
+                    {/* Avatar with fallback initial */}
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-2xs overflow-hidden border border-slate-200 group-hover:border-emerald-400 transition-colors relative">
+                      <span className="select-none">{currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}</span>
+                      {currentUser.avatar && (
+                        <img
+                          src={currentUser.avatar}
+                          alt={currentUser.name}
+                          className="w-full h-full object-cover absolute inset-0"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                    </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleSignOut}
                     title="Đăng xuất"
-                    className="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                    className="w-9 h-9 rounded-2xl flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer shrink-0 border border-transparent hover:border-rose-200"
                   >
                     <LogOut className="w-4 h-4" />
                   </button>
