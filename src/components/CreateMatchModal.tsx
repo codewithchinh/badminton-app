@@ -13,6 +13,7 @@ interface CreateMatchModalProps {
   onUpdate?: (updatedMatch: MatchPost) => void;
   editMatch?: MatchPost | null;
   cloneMatch?: MatchPost | null;
+  prefilledMatch?: Partial<MatchPost> | null;
 }
 
 const DISTRICTS = [
@@ -112,6 +113,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   onUpdate,
   editMatch,
   cloneMatch,
+  prefilledMatch,
 }) => {
   const [title, setTitle] = useState('');
   const [courtName, setCourtName] = useState('');
@@ -154,11 +156,15 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const [isUrgent, setIsUrgent] = useState(false);
   const [announcement, setAnnouncement] = useState('');
 
-  // Sync state when opening or when editMatch / cloneMatch is passed
+  // Sync state when opening or when editMatch / cloneMatch / prefilledMatch is passed
   useEffect(() => {
-    const sourceMatch = editMatch || cloneMatch;
+    const sourceMatch = editMatch || cloneMatch || prefilledMatch;
     if (sourceMatch) {
-      setTitle(cloneMatch ? `Tuyển vãng lai tại ${sourceMatch.courtName} (Lịch mới)` : (sourceMatch.title || ''));
+      setTitle(
+        cloneMatch
+          ? `Tuyển vãng lai tại ${sourceMatch.courtName} (Lịch mới)`
+          : sourceMatch.title || (sourceMatch.courtName ? `Giao lưu vãng lai tại ${sourceMatch.courtName}` : '')
+      );
       setCourtName(sourceMatch.courtName || '');
       setSelectedCourtName(sourceMatch.courtName || '');
       setDistrict(sourceMatch.district || 'Tân Phú');
@@ -189,7 +195,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       setPriceMale(sourceMatch.priceMale ?? 60000);
       setPriceFemale(sourceMatch.priceFemale ?? 40000);
       setCoverImage(sourceMatch.coverImage || '');
-      setNotes(sourceMatch.notes || '');
+      setNotes(sourceMatch.notes || 'Sân vui vẻ giao lưu, có nước đá miễn phí. Đến đúng giờ nhé cả nhà!');
       setTargetGender(sourceMatch.targetGender || 'all');
       setSelectedAmenities(sourceMatch.amenities && sourceMatch.amenities.length > 0 ? sourceMatch.amenities : ['Thảm chuẩn thi đấu', 'Nước đá miễn phí']);
       setRefundPolicy(sourceMatch.refundPolicy || 'Hoàn cọc 100% nếu báo trước 2 tiếng');
@@ -201,6 +207,12 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
         setAccountNumber(sourceMatch.bankInfo.accountNumber || '');
         setAccountName(sourceMatch.bankInfo.accountName || '');
         setDepositAmount(sourceMatch.bankInfo.depositAmount || 30000);
+      } else if (sourceMatch.depositAmount) {
+        setHasBankInfo(true);
+        setBankName('MBBank');
+        setAccountNumber('');
+        setAccountName('');
+        setDepositAmount(sourceMatch.depositAmount);
       } else {
         setHasBankInfo(false);
         setAccountNumber('');

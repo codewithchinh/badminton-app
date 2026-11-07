@@ -83,6 +83,7 @@ export interface MatchPost {
     accountName: string;
     depositAmount?: number;
   };
+  depositAmount?: number;
 }
 
 export function isValidVietnamesePhone(phone: string): boolean {

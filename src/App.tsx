@@ -9,6 +9,7 @@ import { OnboardingModal } from './components/OnboardingModal';
 import { ProfileModal } from './components/ProfileModal';
 import { AuthModal } from './components/AuthModal';
 import { ResetPasswordModal } from './components/ResetPasswordModal';
+import { AIChatModal } from './components/AIChatModal';
 import { supabase, toMatchPost, toDbRow, type DbMatchRow } from './supabase';
 import { normalizeVietnamese } from './data/badmintonCourts';
 import {
@@ -28,6 +29,7 @@ import {
   X,
   ArrowUp,
   RotateCcw,
+  Bot,
 } from 'lucide-react';
 
 export default function App() {
@@ -46,6 +48,8 @@ export default function App() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<MatchPost | null>(null);
   const [cloningMatch, setCloningMatch] = useState<MatchPost | null>(null);
+  const [prefilledMatch, setPrefilledMatch] = useState<Partial<MatchPost> | null>(null);
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -243,11 +247,20 @@ export default function App() {
     openModalWithHash('#create', { modal: 'clone-match', matchId: match.id });
   };
 
+  const handlePrefillCreateMatch = (draft: Partial<MatchPost>) => {
+    setPrefilledMatch(draft);
+    setEditingMatch(null);
+    setCloningMatch(null);
+    setIsCreateOpen(true);
+    openModalWithHash('#create', { modal: 'create-match-ai' });
+  };
+
   const handleCloseCreateMatch = () => {
     closeModalWithHash('#create', () => {
       setIsCreateOpen(false);
       setEditingMatch(null);
       setCloningMatch(null);
+      setPrefilledMatch(null);
     });
   };
 
@@ -1130,7 +1143,21 @@ export default function App() {
             </div>
 
             {/* Desktop Actions + Profile */}
-            <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setIsAIChatOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-800 font-bold text-xs sm:text-sm border border-emerald-200 shadow-xs active:scale-95 transition-all cursor-pointer group"
+                title="Hỏi Trợ lý Cầu Lông AI (Tìm kèo, Soạn bài, Thẩm định trình độ)"
+              >
+                <div className="relative">
+                  <Bot className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
+                  <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping" />
+                </div>
+                <span className="hidden sm:inline">Trợ Lý AI</span>
+                <span className="sm:hidden text-[11px]">AI</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleOpenCreateMatch}
@@ -1640,12 +1667,30 @@ export default function App() {
         </div>
       </main>
 
+      {/* Floating AI Chat Assistant Button */}
+      <button
+        type="button"
+        onClick={() => setIsAIChatOpen(true)}
+        className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 group flex items-center gap-2 px-3.5 py-3 sm:px-4 sm:py-3.5 rounded-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white font-bold text-xs sm:text-sm shadow-xl shadow-emerald-700/35 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer border border-emerald-400/40 backdrop-blur-md"
+        title="Trợ Lý Cầu Lông AI (Tìm kèo, Soạn bài, Thẩm định)"
+      >
+        <div className="relative">
+          <Bot className="w-5 h-5 text-white animate-pulse" />
+          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping" />
+          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full" />
+        </div>
+        <span className="hidden sm:inline font-bold tracking-tight">Hỏi Trợ Lý AI</span>
+        <span className="px-1.5 py-0.5 rounded-full bg-white/20 text-[10px] font-semibold hidden md:inline">
+          Flash
+        </span>
+      </button>
+
       {/* Floating Back-to-Top Button (Imp 24) */}
       {showBackToTop && (
         <button
           type="button"
           onClick={scrollToTop}
-          className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-30 w-11 h-11 rounded-full bg-white/95 hover:bg-white text-slate-700 hover:text-emerald-600 shadow-xl border border-slate-200 backdrop-blur-md flex items-center justify-center cursor-pointer transition-all active:scale-95 group"
+          className="fixed bottom-34 sm:bottom-20 right-4 sm:right-6 z-30 w-11 h-11 rounded-full bg-white/95 hover:bg-white text-slate-700 hover:text-emerald-600 shadow-xl border border-slate-200 backdrop-blur-md flex items-center justify-center cursor-pointer transition-all active:scale-95 group"
           title="Cuộn lên đầu trang"
         >
           <ArrowUp className="w-5 h-5 group-hover:-translate-y-0.5 transition-transform" />
@@ -2067,9 +2112,18 @@ export default function App() {
         currentUser={currentUser}
         editMatch={editingMatch}
         cloneMatch={cloningMatch}
+        prefilledMatch={prefilledMatch}
         onClose={handleCloseCreateMatch}
         onCreate={handleCreateMatch}
         onUpdate={handleUpdateMatch}
+      />
+
+      <AIChatModal
+        isOpen={isAIChatOpen}
+        onClose={() => setIsAIChatOpen(false)}
+        matches={matches}
+        onSelectMatch={handleOpenMatchDetail}
+        onPrefillCreateMatch={handlePrefillCreateMatch}
       />
 
       <OnboardingModal

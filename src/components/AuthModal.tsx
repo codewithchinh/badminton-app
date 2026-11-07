@@ -23,8 +23,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [showResend, setShowResend] = useState(false);
   const [resendStatus, setResendStatus] = useState('');
 
-  if (!isOpen) return null;
-
   const resetMessages = () => {
     setErrorMsg('');
     setSuccessMsg('');
@@ -45,6 +43,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
 
   const translateAuthError = (errMessage: string): string => {
     const msg = (errMessage || '').toLowerCase();
