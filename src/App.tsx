@@ -264,6 +264,19 @@ export default function App() {
     });
   };
 
+  const handleOpenAIChat = () => {
+    if (!session || !currentUser || currentUser.id === 'guest' || !currentUser.name) {
+      handleOpenAuth();
+    } else {
+      setIsAIChatOpen(true);
+      openModalWithHash('#ai-chat', { modal: 'ai-chat' });
+    }
+  };
+
+  const handleCloseAIChat = () => {
+    closeModalWithHash('#ai-chat', () => setIsAIChatOpen(false));
+  };
+
   const handleOpenMobileFilter = () => {
     setIsMobileFilterOpen(true);
     openModalWithHash('#filter', { modal: 'filter' });
@@ -487,6 +500,15 @@ export default function App() {
     } catch (e) {
       console.warn('Sign out error:', e);
     } finally {
+      if (currentUser?.id) {
+        try {
+          sessionStorage.removeItem(`timvanglai_chat_history_${currentUser.id}`);
+        } catch {}
+      }
+      try {
+        sessionStorage.removeItem('timvanglai_chat_history');
+      } catch {}
+      setIsAIChatOpen(false);
       setCurrentUser(INITIAL_USER);
       setSession(null);
       setIsProfileOpen(false);
@@ -541,9 +563,15 @@ export default function App() {
       } else if (currentSession?.user) {
         handleUserLoggedIn(currentSession.user);
       } else if (event === 'SIGNED_OUT') {
+        try {
+          sessionStorage.removeItem('timvanglai_chat_history');
+        } catch {}
+        setIsAIChatOpen(false);
         setCurrentUser(INITIAL_USER);
+        setSession(null);
         setIsOnboardingOpen(false);
         setIsProfileOpen(false);
+        setIsCreateOpen(false);
       }
     });
 
@@ -1146,7 +1174,7 @@ export default function App() {
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
-                onClick={() => setIsAIChatOpen(true)}
+                onClick={handleOpenAIChat}
                 className="flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-800 font-bold text-xs sm:text-sm border border-emerald-200 shadow-xs active:scale-95 transition-all cursor-pointer group"
                 title="Hỏi Trợ lý Cầu Lông AI (Tìm kèo, Soạn bài, Thẩm định trình độ)"
               >
@@ -1670,7 +1698,7 @@ export default function App() {
       {/* Floating AI Chat Assistant Button */}
       <button
         type="button"
-        onClick={() => setIsAIChatOpen(true)}
+        onClick={handleOpenAIChat}
         className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 group flex items-center gap-2 px-3.5 py-3 sm:px-4 sm:py-3.5 rounded-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white font-bold text-xs sm:text-sm shadow-xl shadow-emerald-700/35 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer border border-emerald-400/40 backdrop-blur-md"
         title="Trợ Lý Cầu Lông AI (Tìm kèo, Soạn bài, Thẩm định)"
       >
@@ -2120,8 +2148,11 @@ export default function App() {
 
       <AIChatModal
         isOpen={isAIChatOpen}
-        onClose={() => setIsAIChatOpen(false)}
+        onClose={handleCloseAIChat}
         matches={matches}
+        currentUser={currentUser}
+        session={session}
+        onOpenAuth={handleOpenAuth}
         onSelectMatch={handleOpenMatchDetail}
         onPrefillCreateMatch={handlePrefillCreateMatch}
       />

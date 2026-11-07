@@ -162,6 +162,15 @@ export function processBuiltInBadmintonAI(
       reply += `🔍 *Tiêu chí khớp:* ${searchResults.filterSummary}\n\n`;
     }
     reply += `Bạn có thể bấm trực tiếp vào thẻ kèo dưới đây để xem vị trí, số slot trống và đăng ký ngay:`;
+  } else if (searchResults.requestedHour !== null) {
+    const formattedHour = `${searchResults.requestedHour.toString().padStart(2, '0')}:${searchResults.requestedMinute.toString().padStart(2, '0')}`;
+    reply = `🏸 **Hiện tại không có kèo nào diễn ra lúc ${formattedHour}** ${searchResults.isTonight ? '(buổi tối/đêm)' : ''} trong hệ thống.\n\n`;
+    if (searchResults.closestMatches && searchResults.closestMatches.length > 0) {
+      const latest = searchResults.closestMatches[0];
+      reply += `💡 Các sân cầu phong trào thường kết thúc ca lúc 22:00 - 22:30. Kèo muộn nhất hiện có hôm nay là tại **${latest.courtName} (${latest.startTime} - ${latest.endTime})**.\n\nBạn có thể tham khảo các kèo buổi tối gần nhất dưới đây xem có phù hợp không nhé:`;
+    } else {
+      reply += `💡 Thông thường các sân cầu phong trào đóng cửa trước 22:30. Bạn có thể thử tìm các ca tối phổ biến như **18h - 20h**, **19h - 21h** hoặc **20h - 22h** nhé!`;
+    }
   } else {
     reply = `🏸 Hiện tại chưa có kèo nào khớp 100% với yêu cầu *"${userInput}"*.\n\n`;
     if (searchResults.suggestions.length > 0) {
@@ -172,25 +181,42 @@ export function processBuiltInBadmintonAI(
     reply += `Bạn có thể thử tìm theo quận khác, hoặc bấm nút bên dưới để xem toàn bộ danh sách kèo hôm nay nhé!`;
   }
 
+  const resultMatches =
+    searchResults.matches.length > 0
+      ? searchResults.matches.slice(0, 5)
+      : searchResults.closestMatches && searchResults.closestMatches.length > 0
+      ? searchResults.closestMatches.slice(0, 3)
+      : undefined;
+
   return {
     id: Date.now().toString(),
     sender: 'assistant',
     text: reply,
     timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-    matches: searchResults.matches.slice(0, 5),
+    matches: resultMatches,
     quickPrompts: [
-      '🏸 Kèo tối nay Tân Bình / Phú Nhuận',
-      '💰 Kèo dưới 60k',
-      '🎯 Thẩm định trình độ của tôi',
+      '🏸 Kèo tối nay 19h - 21h',
+      '🏸 Kèo 20h - 22h',
+      '💰 Kèo dưới 60k Tân Bình',
       '📝 Dán bài Zalo soạn kèo nhanh',
     ],
   };
 }
 
+interface SearchMatchesResult {
+  matches: MatchPost[];
+  filterSummary: string;
+  requestedHour: number | null;
+  requestedMinute: number;
+  isTonight: boolean;
+  closestMatches: MatchPost[];
+  suggestions: string[];
+}
+
 /**
  * Natural Language Match Search Engine
  */
-function searchMatchesWithNLP(query: string, allMatches: MatchPost[]) {
+function searchMatchesWithNLP(query: string, allMatches: MatchPost[]): SearchMatchesResult {
   const qNorm = normalizeText(query);
   const activeMatches = allMatches.filter((m) => m.status !== 'cancelled' && m.status !== 'completed');
 
@@ -219,12 +245,31 @@ function searchMatchesWithNLP(query: string, allMatches: MatchPost[]) {
     }
   }
 
+  // 1. Detect Specific Hour mention (e.g. 23h, 23:00, 23h30, 19h, 8h sáng, 7h tối...)
+  let specificHour: number | null = null;
+  let specificMinute = 0;
+
+  const hourMatch = qNorm.match(/(?:luc|lúc|vao|vào|tam|tầm|khoang|khoảng)?\s*(\b[0-2]?\d)(?:h|:(\d{2}))(?:\s*(sang|sáng|chieu|chiều|toi|tối|dem|đêm))?/);
+  if (hourMatch) {
+    let h = parseInt(hourMatch[1], 10);
+    if (h >= 0 && h <= 24) {
+      if (hourMatch[2]) {
+        specificMinute = parseInt(hourMatch[2], 10);
+      }
+      const period = hourMatch[3];
+      if (period && (period.includes('chieu') || period.includes('chiều') || period.includes('toi') || period.includes('tối'))) {
+        if (h < 12) h += 12;
+      }
+      specificHour = h;
+    }
+  }
+
   // Detect Time Range / Day
-  let isTonight = /tối|toi|dem|đêm|18h|19h|20h|21h/i.test(qNorm);
-  let isMorning = /sáng|sang|morning|6h|7h|8h|9h/i.test(qNorm);
-  let isAfternoon = /chiều|chieu|afternoon|14h|15h|16h|17h/i.test(qNorm);
-  let isToday = /hôm nay|hom nay|today/i.test(qNorm);
-  let isTomorrow = /ngày mai|ngay mai|mai|tomorrow/i.test(qNorm);
+  const isTonight = /tối|toi|dem|đêm/i.test(qNorm) || (specificHour !== null && specificHour >= 18);
+  const isMorning = /sáng|sang|morning/i.test(qNorm) || (specificHour !== null && specificHour < 12);
+  const isAfternoon = /chiều|chieu|afternoon/i.test(qNorm) || (specificHour !== null && specificHour >= 12 && specificHour < 18);
+  const isToday = /hôm nay|hom nay|today/i.test(qNorm);
+  const isTomorrow = /ngày mai|ngay mai|mai|tomorrow/i.test(qNorm);
 
   // Detect Max Price
   let maxPrice: number | null = null;
@@ -244,7 +289,7 @@ function searchMatchesWithNLP(query: string, allMatches: MatchPost[]) {
   else if (/yếu\+|yeu\+/i.test(qNorm)) targetLevel = 'Yếu+';
   else if (/yếu|yeu/i.test(qNorm)) targetLevel = 'Yếu';
 
-  // Filter matches
+  // Filter matches strictly
   let results = activeMatches.filter((m) => {
     // District match
     if (detectedDistricts.length > 0 && !detectedDistricts.includes(m.district)) {
@@ -255,18 +300,38 @@ function searchMatchesWithNLP(query: string, allMatches: MatchPost[]) {
     if (isToday && m.date !== 'Hôm nay') return false;
     if (isTomorrow && m.date !== 'Ngày mai') return false;
 
-    // Time of day match
-    if (isTonight) {
-      const startHour = parseInt(m.startTime.split(':')[0], 10);
-      if (startHour < 17) return false;
-    }
-    if (isMorning) {
-      const startHour = parseInt(m.startTime.split(':')[0], 10);
-      if (startHour >= 12) return false;
-    }
-    if (isAfternoon) {
-      const startHour = parseInt(m.startTime.split(':')[0], 10);
-      if (startHour < 12 || startHour >= 18) return false;
+    // Specific Hour Check
+    if (specificHour !== null) {
+      const [sH, sM] = m.startTime.split(':').map((v) => parseInt(v, 10));
+      const [eH, eM] = m.endTime.split(':').map((v) => parseInt(v, 10));
+      const startTotal = sH * 60 + (sM || 0);
+      let endTotal = eH * 60 + (eM || 0);
+      if (endTotal <= startTotal) {
+        endTotal += 24 * 60; // Ca đánh xuyên đêm
+      }
+      const targetTotal = specificHour * 60 + specificMinute;
+
+      // Trận đấu chỉ khớp nếu giờ người dùng tìm nằm trong trận (hoặc giờ bắt đầu sát trong vòng 30 phút)
+      const isDuringMatch = targetTotal >= startTotal && targetTotal < endTotal;
+      const isCloseStart = Math.abs(startTotal - targetTotal) <= 30;
+
+      if (!isDuringMatch && !isCloseStart) {
+        return false;
+      }
+    } else {
+      // General Time of day match (khi người dùng không nhập giờ cụ thể)
+      if (isTonight && !isMorning && !isAfternoon) {
+        const startHour = parseInt(m.startTime.split(':')[0], 10);
+        if (startHour < 17) return false;
+      }
+      if (isMorning && !isTonight && !isAfternoon) {
+        const startHour = parseInt(m.startTime.split(':')[0], 10);
+        if (startHour >= 12) return false;
+      }
+      if (isAfternoon && !isTonight && !isMorning) {
+        const startHour = parseInt(m.startTime.split(':')[0], 10);
+        if (startHour < 12 || startHour >= 18) return false;
+      }
     }
 
     // Price match
@@ -277,7 +342,6 @@ function searchMatchesWithNLP(query: string, allMatches: MatchPost[]) {
     // Level match
     if (targetLevel) {
       if (m.minLevel !== targetLevel && m.maxLevel !== targetLevel) {
-        // Also allow if it's within range
         const levels: SkillLevel[] = ['Newbie', 'Yếu', 'Yếu+', 'TB Yếu', 'TB-', 'Trung Bình', 'TB+', 'TB+++', 'Khá (Bán chuyên)', 'Tốt (Ăn tập)'];
         const targetIdx = levels.indexOf(targetLevel);
         const minIdx = levels.indexOf(m.minLevel);
@@ -291,30 +355,50 @@ function searchMatchesWithNLP(query: string, allMatches: MatchPost[]) {
     return true;
   });
 
-  // If no strict results, fallback to district or time only
-  if (results.length === 0 && detectedDistricts.length > 0) {
-    results = activeMatches.filter((m) => detectedDistricts.includes(m.district));
+  // Closest alternative matches if specific hour had 0 results
+  let closestMatches: MatchPost[] = [];
+  if (specificHour !== null && results.length === 0) {
+    closestMatches = activeMatches
+      .filter((m) => {
+        if (isToday && m.date !== 'Hôm nay') return false;
+        if (isTomorrow && m.date !== 'Ngày mai') return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const [sHa, sMa] = a.startTime.split(':').map((v) => parseInt(v, 10));
+        const [sHb, sMb] = b.startTime.split(':').map((v) => parseInt(v, 10));
+        const diffA = Math.abs(sHa * 60 + (sMa || 0) - (specificHour! * 60 + specificMinute));
+        const diffB = Math.abs(sHb * 60 + (sMb || 0) - (specificHour! * 60 + specificMinute));
+        return diffA - diffB;
+      });
   }
 
-  // If still empty and no filter matched, search by raw string
-  if (results.length === 0) {
-    results = activeMatches.filter((m) => {
-      const full = normalizeText(`${m.title} ${m.courtName} ${m.district} ${m.address} ${m.notes} ${m.shuttleType}`);
-      return full.includes(qNorm);
-    });
+  // If no strict results and NO specific hour requested, fallback to district
+  if (results.length === 0 && specificHour === null && detectedDistricts.length > 0) {
+    results = activeMatches.filter((m) => detectedDistricts.includes(m.district));
   }
 
   // Filter summary description
   const summaryParts: string[] = [];
   if (detectedDistricts.length > 0) summaryParts.push(`Khu vực: ${detectedDistricts.join(', ')}`);
-  if (isTonight) summaryParts.push('Khung giờ: Buổi tối (sau 17h)');
-  if (isMorning) summaryParts.push('Khung giờ: Buổi sáng');
+  if (specificHour !== null) {
+    const formattedHour = `${specificHour.toString().padStart(2, '0')}:${specificMinute.toString().padStart(2, '0')}`;
+    summaryParts.push(`Khung giờ: ${formattedHour}`);
+  } else {
+    if (isTonight) summaryParts.push('Khung giờ: Buổi tối (sau 17h)');
+    if (isMorning) summaryParts.push('Khung giờ: Buổi sáng');
+    if (isAfternoon) summaryParts.push('Khung giờ: Buổi chiều');
+  }
   if (targetLevel) summaryParts.push(`Trình độ: ${targetLevel}`);
   if (maxPrice) summaryParts.push(`Giá tối đa: ${maxPrice.toLocaleString('vi-VN')}đ`);
 
   return {
     matches: results,
     filterSummary: summaryParts.join(' • '),
+    requestedHour: specificHour,
+    requestedMinute: specificMinute,
+    isTonight,
+    closestMatches,
     suggestions: [
       'Thử mở rộng sang các quận lân cận (Tân Phú, Tân Bình, Gò Vấp)',
       'Xem tất cả các kèo đang mở đăng ký trong ngày hôm nay',
@@ -578,7 +662,12 @@ DANH SÁCH CÁC TRẬN ĐẤU ĐANG CÓ TRÊN HỆ THỐNG:
 ${JSON.stringify(matchesContext)}
 
 NHIỆM VỤ CỦA BẠN:
-1. Nếu người dùng tìm kèo: Chỉ gợi ý các trận đấu CÓ THẬT trong danh sách trên. Nêu rõ tên sân, quận, giờ, giá và số slot còn lại. Nếu có trận khớp, hãy trả về danh sách matchIds trong JSON kết thúc.
+1. Nếu người dùng tìm kèo: Chỉ gợi ý các trận đấu CÓ THẬT trong danh sách trên. Nêu rõ tên sân, quận, giờ, giá và số slot còn lại.
+QUY TẮC KHUNG GIỜ BẮT BUỘC (CHÍNH XÁC TUYỆT ĐỐI):
+- Nếu người dùng hỏi một giờ cụ thể (VD: 23h, 22h, 7h sáng...): Hãy kiểm tra kỹ startTime và endTime của từng trận trong danh sách.
+- Trận đấu CHỈ khớp nếu thời gian diễn ra BAO GỒM giờ đó (hoặc giờ bắt đầu sát trong vòng 30 phút).
+- Tuyệt đối KHÔNG được bảo là có kèo cho 23h nếu kèo đó kết thúc lúc 20h hoặc 22h!
+- Nếu không có trận nào diễn ra vào giờ đó, PHẢI nói thẳng: "Hiện tại không có kèo nào diễn ra lúc [giờ]..." rồi mới gợi ý các kèo tối muộn nhất trong danh sách.
 2. Nếu Host dán bài đăng nháp từ Zalo/Facebook: Hãy bóc tách đầy đủ (Tên sân, ngày, giờ, trình độ, loại cầu, giá nam, giá nữ, tiền cọc, ghi chú).
 3. Nếu người chơi hỏi về trình độ: Đánh giá theo thang 10 bậc Việt Nam (Newbie, Yếu, Yếu+, TB Yếu, TB-, Trung Bình, TB+, TB+++, Khá, Tốt) và tư vấn nâng cao.
 4. Trả lời bằng tiếng Việt tự nhiên, định dạng Markdown đẹp mắt.`;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { MatchPost } from '../types';
+import type { MatchPost, UserProfile } from '../types';
 import {
   X,
   Send,
@@ -14,6 +14,7 @@ import {
   Key,
   Flame,
   Award,
+  Lock,
 } from 'lucide-react';
 import {
   type ChatMessage,
@@ -27,6 +28,9 @@ interface AIChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   matches: MatchPost[];
+  currentUser: UserProfile;
+  session: any;
+  onOpenAuth: () => void;
   onSelectMatch: (match: MatchPost) => void;
   onPrefillCreateMatch: (draft: Partial<MatchPost>) => void;
 }
@@ -48,20 +52,16 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
   isOpen,
   onClose,
   matches,
+  currentUser,
+  session,
+  onOpenAuth,
   onSelectMatch,
   onPrefillCreateMatch,
 }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    try {
-      const saved = sessionStorage.getItem('timvanglai_chat_history');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {}
-    return [INITIAL_WELCOME_MESSAGE];
-  });
+  const isLoggedIn = !!session && currentUser?.id && currentUser.id !== 'guest' && !!currentUser.name;
+  const userStorageKey = isLoggedIn ? `timvanglai_chat_history_${currentUser.id}` : null;
 
+  const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_WELCOME_MESSAGE]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -71,26 +71,47 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Sync messages when user logs in, logs out, or switches accounts
+  useEffect(() => {
+    if (!userStorageKey) {
+      setMessages([INITIAL_WELCOME_MESSAGE]);
+      return;
+    }
+    try {
+      const saved = sessionStorage.getItem(userStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+          return;
+        }
+      }
+    } catch {}
+    setMessages([INITIAL_WELCOME_MESSAGE]);
+  }, [userStorageKey]);
+
+  // Persist messages to user-specific sessionStorage key
+  useEffect(() => {
+    if (userStorageKey) {
+      try {
+        sessionStorage.setItem(userStorageKey, JSON.stringify(messages));
+      } catch {}
+    }
+  }, [messages, userStorageKey]);
+
   // Auto scroll to bottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && isLoggedIn) {
       setTimeout(() => {
         scrollToBottom();
         inputRef.current?.focus();
       }, 100);
     }
-  }, [isOpen, messages, isTyping]);
-
-  // Persist messages to sessionStorage
-  useEffect(() => {
-    try {
-      sessionStorage.setItem('timvanglai_chat_history', JSON.stringify(messages));
-    } catch {}
-  }, [messages]);
+  }, [isOpen, isLoggedIn, messages, isTyping]);
 
   if (!isOpen) return null;
 
@@ -131,6 +152,11 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
   const handleClearHistory = () => {
     if (window.confirm('Bạn có chắc chắn muốn xoá toàn bộ lịch sử trò chuyện với AI không?')) {
       setMessages([INITIAL_WELCOME_MESSAGE]);
+      if (userStorageKey) {
+        try {
+          sessionStorage.removeItem(userStorageKey);
+        } catch {}
+      }
       try {
         sessionStorage.removeItem('timvanglai_chat_history');
       } catch {}
@@ -233,8 +259,32 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
           </div>
         )}
 
-        {/* Chat Messages Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50">
+        {/* Main Content Area */}
+        {!isLoggedIn ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-slate-50/50">
+            <div className="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4 shadow-sm border border-emerald-200">
+              <Lock className="w-8 h-8" />
+            </div>
+            <h4 className="text-base font-bold text-slate-900 mb-1.5">Vui lòng đăng nhập để chat với AI</h4>
+            <p className="text-xs text-slate-500 mb-6 max-w-xs leading-relaxed">
+              Tính năng Trợ Lý AI chỉ dành cho thành viên đã đăng nhập. Đăng nhập giúp bảo mật lịch sử chat cá nhân và gợi ý kèo chuẩn xác theo trình độ của bạn.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenAuth();
+              }}
+              className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg shadow-emerald-700/25 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+            >
+              <User className="w-4 h-4" />
+              <span>Đăng nhập / Đăng ký ngay</span>
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Chat Messages Body */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -519,7 +569,9 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
             </button>
           </form>
         </div>
-      </div>
-    </div>
+      </>
+    )}
+  </div>
+</div>
   );
 };
