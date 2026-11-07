@@ -4,7 +4,6 @@ import {
   X,
   Send,
   Sparkles,
-  Bot,
   User,
   Clock,
   ChevronRight,
@@ -14,8 +13,8 @@ import {
   Key,
   Flame,
   Award,
-  Lock,
 } from 'lucide-react';
+import { BadmintonMascotBot } from './BadmintonMascotBot';
 import {
   type ChatMessage,
   sendChatMessageToAI,
@@ -38,12 +37,12 @@ interface AIChatModalProps {
 const INITIAL_WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   sender: 'assistant',
-  text: `🏸 **Chào bạn! Mình là Trợ Lý Cầu Lông AI của TimVangLai.**\n\nMình có thể hỗ trợ bạn ngay lập tức:\n1. 🔍 **Tìm kèo thông minh:** *"Tìm kèo tối nay Tân Bình trình TB Yếu dưới 70k"*\n2. 📝 **Trợ lý Host soạn bài:** Dán tin nhắn nháp từ Facebook/Zalo vào đây, mình sẽ bóc tách và điền thẳng vào Form Tạo Kèo cho bạn!\n3. 🎯 **Thẩm định trình độ:** Mô tả lối đánh (kinh nghiệm, phông, đập, thủ...) để mình chấm điểm theo thang 10 bậc chuẩn Việt Nam.\n\nBạn muốn thử việc gì trước?`,
+  text: `🏸 **Hế lô bạn! Mình là Bé Cầu AI đây!**\n\nMình là trợ lý cầu lông phong trào siêu thân thiện của bạn. Cần gì cứ nói với mình nha:\n\n1. 🔍 **Tìm kèo thông minh:** *"Tìm kèo Tân Bình tối nay 19h-21h trình TB Yếu dưới 70k"*\n2. 📝 **Trợ lý soạn bài cho Host:** Cứ dán đoạn tin nhắn nháp từ Facebook/Zalo vào đây, mình tự bóc tách và điền thẳng vào Form Tạo Kèo cho bạn!\n3. 🎯 **Thẩm định trình độ:** Kể cho mình nghe bạn chơi bao lâu, đánh phông, đập, thủ thế nào... mình chấm điểm theo thang 10 bậc chuẩn Việt Nam liền!\n\nBạn muốn tìm kèo hay cần mình phụ việc gì trước nè?`,
   timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
   quickPrompts: [
-    '🏸 Tìm kèo tối nay gần tôi',
-    '📝 Dán bài Zalo để AI soạn',
-    '🎯 Đánh giá trình độ của tôi',
+    '🏸 Tìm kèo tối nay gần tui',
+    '📝 Dán bài Zalo tui soạn cho',
+    '🎯 Test xem tui trình gì nha',
     '💰 Kèo dưới 60k Tân Bình',
   ],
 };
@@ -183,23 +182,26 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
       <div className="w-full sm:max-w-xl h-[88vh] sm:h-[680px] bg-white sm:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100 animate-in slide-in-from-bottom duration-300">
         
         {/* Chat Header */}
-        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 px-4 py-3.5 sm:px-5 sm:py-4 flex items-center justify-between text-white shrink-0 shadow-md">
-          <div className="flex items-center gap-3">
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between text-white shrink-0 shadow-md">
+          <div className="flex items-center gap-2.5">
             <div className="relative">
-              <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-inner">
-                <Bot className="w-6 h-6 text-white" />
+              <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 shadow-inner overflow-hidden p-0.5">
+                <BadmintonMascotBot size="sm" isAnimated={true} />
               </div>
               <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 border-2 border-emerald-700 rounded-full animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h3 className="font-bold text-base tracking-tight leading-tight">Trợ Lý Cầu Lông AI</h3>
-                <span className="px-1.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-100 text-[10px] font-semibold uppercase tracking-wider border border-emerald-300/30">
-                  2.0 Flash
+                <h3 className="font-extrabold text-base tracking-tight leading-tight flex items-center gap-1">
+                  <span>Bé Cầu AI</span>
+                  <span className="text-amber-300 text-xs">🏸</span>
+                </h3>
+                <span className="px-1.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-100 text-[10px] font-bold uppercase tracking-wider border border-emerald-300/30">
+                  Online 24/7
                 </span>
               </div>
               <p className="text-xs text-emerald-100/90 font-medium leading-tight">
-                Tìm kèo • Soạn bài Host • Thẩm định trình độ
+                Trợ lý Cầu Lông siêu dễ thương • Sẵn sàng hỗ trợ
               </p>
             </div>
           </div>
@@ -261,13 +263,15 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
 
         {/* Main Content Area */}
         {!isLoggedIn ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-slate-50/50">
-            <div className="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4 shadow-sm border border-emerald-200">
-              <Lock className="w-8 h-8" />
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-emerald-50/40 via-white to-slate-50">
+            <div className="mb-4 transform hover:scale-105 transition-transform">
+              <BadmintonMascotBot size="xl" expression="thinking" isAnimated={true} />
             </div>
-            <h4 className="text-base font-bold text-slate-900 mb-1.5">Vui lòng đăng nhập để chat với AI</h4>
+            <h4 className="text-base font-extrabold text-slate-900 mb-1.5 flex items-center gap-1.5 justify-center">
+              <span>Hế lô bạn! Đăng nhập để chơi cùng Bé Cầu nha! 🏸</span>
+            </h4>
             <p className="text-xs text-slate-500 mb-6 max-w-xs leading-relaxed">
-              Tính năng Trợ Lý AI chỉ dành cho thành viên đã đăng nhập. Đăng nhập giúp bảo mật lịch sử chat cá nhân và gợi ý kèo chuẩn xác theo trình độ của bạn.
+              Bé Cầu AI sẽ giúp bạn tìm kèo chuẩn trình độ, bóc tách bài Zalo trong 1 giây và bảo mật lịch sử chat của riêng bạn.
             </p>
             <button
               type="button"
@@ -275,7 +279,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
                 onClose();
                 onOpenAuth();
               }}
-              className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg shadow-emerald-700/25 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+              className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xl shadow-emerald-700/25 active:scale-95 transition-all cursor-pointer flex items-center gap-2 hover:scale-105"
             >
               <User className="w-4 h-4" />
               <span>Đăng nhập / Đăng ký ngay</span>
@@ -288,11 +292,13 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex gap-2.5 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.sender === 'assistant' && (
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shrink-0 shadow-sm mt-0.5">
-                  <Bot className="w-4 h-4" />
+                <div className="shrink-0 -mt-0.5">
+                  <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200/80 flex items-center justify-center shadow-xs overflow-hidden">
+                    <BadmintonMascotBot size="xs" isAnimated={false} />
+                  </div>
                 </div>
               )}
 
@@ -489,15 +495,15 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
 
           {/* Typing animation */}
           {isTyping && (
-            <div className="flex gap-3 items-center">
-              <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center text-white shrink-0">
-                <Bot className="w-4 h-4" />
+            <div className="flex gap-2.5 items-end">
+              <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200/80 flex items-center justify-center shadow-xs overflow-hidden shrink-0">
+                <BadmintonMascotBot size="xs" expression="thinking" isAnimated={true} />
               </div>
-              <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-1.5">
+              <div className="bg-white border border-emerald-100 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-                <span className="text-[11px] text-slate-400 font-medium ml-1.5">AI đang tra cứu...</span>
+                <span className="text-[11px] text-emerald-700 font-semibold ml-1.5">Bé Cầu đang tìm sân cho bạn nè...</span>
               </div>
             </div>
           )}
@@ -507,12 +513,12 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
 
         {/* Quick Suggestion Chips Bar */}
         <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 text-xs">
-          <span className="text-[11px] text-slate-400 font-medium shrink-0 flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-emerald-600" /> Gợi ý:
+          <span className="text-[11px] text-emerald-700 font-bold shrink-0 flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-amber-500" /> Bé Cầu gợi ý:
           </span>
           <button
-            onClick={() => handleSendMessage('Tìm kèo tối nay gần tôi trình TB Yếu')}
-            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 font-medium border border-slate-200 transition-colors shrink-0 text-[11px]"
+            onClick={() => handleSendMessage('Tìm kèo tối nay gần tui trình TB Yếu')}
+            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-medium border border-slate-200 hover:border-emerald-300 transition-all shrink-0 text-[11px] shadow-xs active:scale-95"
           >
             🏸 Kèo tối nay
           </button>
@@ -522,21 +528,21 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
                 'Tuyển 2 nam tối nay sân Minkyo Tân Phú 19h-21h, cầu VinaStar Đỏ, giá 60k nam 40k nữ, cọc 20k'
               )
             }
-            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 font-medium border border-slate-200 transition-colors shrink-0 text-[11px]"
+            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-medium border border-slate-200 hover:border-emerald-300 transition-all shrink-0 text-[11px] shadow-xs active:scale-95"
           >
-            📝 Thử bóc tách bài Zalo
+            📝 Thử bóc bài Zalo
           </button>
           <button
             onClick={() =>
               handleSendMessage('Mình mới chơi được 1 năm, biết đập nhưng thủ còn yếu thì là trình gì?')
             }
-            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 font-medium border border-slate-200 transition-colors shrink-0 text-[11px]"
+            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-medium border border-slate-200 hover:border-emerald-300 transition-all shrink-0 text-[11px] shadow-xs active:scale-95"
           >
             🎯 Đo trình độ
           </button>
           <button
             onClick={() => handleSendMessage('Giải thích luật giao cầu dưới 1.15m và cách tính điểm')}
-            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 font-medium border border-slate-200 transition-colors shrink-0 text-[11px]"
+            className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-medium border border-slate-200 hover:border-emerald-300 transition-all shrink-0 text-[11px] shadow-xs active:scale-95"
           >
             ⚖️ Luật giao cầu
           </button>
@@ -556,7 +562,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Hỏi tìm kèo, dán bài đăng Zalo, hoặc hỏi luật..."
+              placeholder="Nói với Bé Cầu: tìm kèo, quăng bài Zalo, hoặc hỏi luật nha..."
               disabled={isTyping}
               className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-100/80 focus:bg-white border border-transparent focus:border-emerald-500 text-xs sm:text-sm focus:outline-none transition-all placeholder:text-slate-400 font-medium"
             />

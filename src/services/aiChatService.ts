@@ -64,7 +64,7 @@ export function processBuiltInBadmintonAI(
 
   if (isPostParseIntent && userInput.length > 35) {
     const draft = parseRawPostToDraft(userInput);
-    let summaryText = `🏸 **Trợ lý AI đã bóc tách xong bài đăng của bạn!**\n\n`;
+    let summaryText = `🏸 **Bé Cầu AI đã bóc tách xong bài đăng cho bạn nè!**\n\n`;
     summaryText += `• **Sân:** ${draft.courtName || 'Chưa nhận diện'}${draft.district ? ` (${draft.district})` : ''}\n`;
     summaryText += `• **Địa chỉ:** ${draft.address || 'Theo vị trí sân'}\n`;
     summaryText += `• **Thời gian:** ${draft.startTime || '19:00'} - ${draft.endTime || '21:00'} (${draft.date || 'Hôm nay'})\n`;
@@ -157,22 +157,22 @@ export function processBuiltInBadmintonAI(
   let reply = '';
 
   if (searchResults.matches.length > 0) {
-    reply = `🏸 **Trợ lý AI đã tìm thấy ${searchResults.matches.length} kèo phù hợp** với yêu cầu *"${userInput}"*:\n\n`;
+    reply = `🏸 **Bé Cầu đã tìm thấy ${searchResults.matches.length} kèo phù hợp** với yêu cầu *"${userInput}"* nè:\n\n`;
     if (searchResults.filterSummary) {
       reply += `🔍 *Tiêu chí khớp:* ${searchResults.filterSummary}\n\n`;
     }
-    reply += `Bạn có thể bấm trực tiếp vào thẻ kèo dưới đây để xem vị trí, số slot trống và đăng ký ngay:`;
+    reply += `Bạn bấm vào thẻ kèo bên dưới để xem vị trí, số slot trống và đăng ký ngay nha:`;
   } else if (searchResults.requestedHour !== null) {
     const formattedHour = `${searchResults.requestedHour.toString().padStart(2, '0')}:${searchResults.requestedMinute.toString().padStart(2, '0')}`;
-    reply = `🏸 **Hiện tại không có kèo nào diễn ra lúc ${formattedHour}** ${searchResults.isTonight ? '(buổi tối/đêm)' : ''} trong hệ thống.\n\n`;
+    reply = `🏸 **Hiện tại Bé Cầu chưa thấy kèo nào diễn ra lúc ${formattedHour}** ${searchResults.isTonight ? '(buổi tối/đêm)' : ''} trong hệ thống.\n\n`;
     if (searchResults.closestMatches && searchResults.closestMatches.length > 0) {
       const latest = searchResults.closestMatches[0];
-      reply += `💡 Các sân cầu phong trào thường kết thúc ca lúc 22:00 - 22:30. Kèo muộn nhất hiện có hôm nay là tại **${latest.courtName} (${latest.startTime} - ${latest.endTime})**.\n\nBạn có thể tham khảo các kèo buổi tối gần nhất dưới đây xem có phù hợp không nhé:`;
+      reply += `💡 Các sân cầu phong trào thường kết thúc ca lúc 22:00 - 22:30. Kèo muộn nhất hiện có hôm nay là tại **${latest.courtName} (${latest.startTime} - ${latest.endTime})**.\n\nBạn tham khảo các kèo buổi tối gần nhất dưới đây xem có tiện giờ không nha:`;
     } else {
       reply += `💡 Thông thường các sân cầu phong trào đóng cửa trước 22:30. Bạn có thể thử tìm các ca tối phổ biến như **18h - 20h**, **19h - 21h** hoặc **20h - 22h** nhé!`;
     }
   } else {
-    reply = `🏸 Hiện tại chưa có kèo nào khớp 100% với yêu cầu *"${userInput}"*.\n\n`;
+    reply = `🏸 Hiện tại Bé Cầu chưa thấy kèo nào khớp 100% với yêu cầu *"${userInput}"*.\n\n`;
     if (searchResults.suggestions.length > 0) {
       reply += `💡 **Gợi ý dành cho bạn:**\n`;
       searchResults.suggestions.forEach((s) => (reply += `• ${s}\n`));
@@ -655,8 +655,8 @@ export async function sendChatMessageToAI(
         shuttle: m.shuttleType,
       }));
 
-    const systemPrompt = `Bạn là Trợ Lý Cầu Lông AI thông minh của nền tảng TimVangLai.io.vn (tìm kèo & tuyển vãng lai cầu lông phong trào #1 Việt Nam).
-Tính cách: Thân thiện, năng động, am hiểu sâu sắc văn hoá cầu lông phong trào Việt Nam (thuật ngữ: phông, đập/smash, gõ cổ tay, thủ phản tạt, vãng lai, cọc giữ slot, VinaStar, Hải Yến...).
+    const systemPrompt = `Bạn là Bé Cầu AI - Trợ Lý Cầu Lông siêu dễ thương, thông minh và nhiệt tình của nền tảng TimVangLai.io.vn (tìm kèo & tuyển vãng lai cầu lông phong trào #1 Việt Nam).
+Tính cách & Xưng hô: Tự xưng là 'Bé Cầu' hoặc 'mình', gọi người dùng là 'bạn'. Giọng văn vui vẻ, dễ thương, thân thiện, am hiểu sâu sắc văn hoá cầu lông phong trào Việt Nam (thuật ngữ: phông, đập/smash, gõ cổ tay, thủ phản tạt, vãng lai, cọc giữ slot, VinaStar, Hải Yến...).
 
 DANH SÁCH CÁC TRẬN ĐẤU ĐANG CÓ TRÊN HỆ THỐNG:
 ${JSON.stringify(matchesContext)}
