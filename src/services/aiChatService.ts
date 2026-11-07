@@ -57,6 +57,61 @@ export function processBuiltInBadmintonAI(
 ): ChatMessage {
   const inputNorm = normalizeText(userInput);
 
+  // 0. GREETING & SMALLTALK INTENT (Chào hỏi, cảm ơn, tạm biệt, giới thiệu bản thân)
+  const isGreeting =
+    /^(helo|hello|hi|hey|hai|chao|xin chao|alo|alo alo|e|ê|be cau|be cau oi|chao ban|chao be cau|good morning|he lo|hê lô|hoi xiu|chào|xin chào|bé cầu ơi|chào bạn|chào bé cầu)\b/i.test(
+      inputNorm
+    ) || /^(helo|hello|hi|hey|hai|chao|alo|e|ê)$/i.test(inputNorm);
+
+  const isThanks =
+    /^(cam on|cảm ơn|thank|thanks|thank you|cam on be cau|cảm ơn bé cầu)\b/i.test(inputNorm);
+
+  const isGoodbye =
+    /^(tam biet|tạm biệt|bye|goodbye|bye bye|bai bai)\b/i.test(inputNorm);
+
+  const isBotIntro =
+    /^(ban la ai|bạn là ai|ai day|ai đây|la ai|là ai|lam duoc gi|làm được gì|giup duoc gi|giúp được gì)\b/i.test(inputNorm);
+
+  if (isGreeting || isBotIntro) {
+    const greetingText = `Dạ Bé Cầu xin chào bạn nha! 🏸✨\n\nMình là **Bé Cầu AI** - Trợ lý cầu lông siêu dễ thương của TimVangLai.io.vn nè! Hôm nay bạn cần Bé Cầu hỗ trợ gì nè?\n\n• 🔍 **Tìm kèo giao lưu:** Bạn chỉ cần nói khu vực, giờ rảnh hoặc giá (VD: *"Tìm kèo tối nay Tân Bình"*, *"Kèo 20h - 22h dưới 60k"*).\n• 📝 **Soạn bài đăng Host:** Quăng nguyên văn bài viết từ Zalo/Facebook vào đây, mình tự động điền form tạo kèo trong 1 giây!\n• 🎯 **Đo trình độ:** Tự kiểm tra xem bạn thuộc trình độ nào theo thang 10 bậc Việt Nam.\n• 💡 **Hỏi luật & kinh nghiệm:** Hỏi về luật giao cầu 1.15m, cách chọn vợt, cước, chọn cầu...\n\nBạn cứ thoải mái nhắn cho Bé Cầu nha! 🥰`;
+
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: greetingText,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      quickPrompts: [
+        '🏸 Kèo tối nay Tân Bình',
+        '📝 Thử bóc tách bài Zalo',
+        '🎯 Đo trình độ của tôi',
+        '💡 Luật giao cầu 1.15m',
+      ],
+    };
+  }
+
+  if (isThanks) {
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: `Dạ không có chi nè! 🥰 Chúc bạn có những trận cầu thật vui vẻ và smash cháy sân nhé! Cần tìm kèo hay hỗ trợ gì cứ gọi Bé Cầu bất cứ lúc nào nha 🏸✨`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      quickPrompts: [
+        '🏸 Tìm kèo tối nay gần tôi',
+        '🎯 Đo trình độ của tôi',
+        '📝 Soạn bài đăng Host',
+      ],
+    };
+  }
+
+  if (isGoodbye) {
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: `Tạm biệt bạn nha! 👋 Hẹn gặp lại bạn trên sân cầu lông! Chúc bạn một ngày tràn đầy năng lượng nha 🏸✨`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+    };
+  }
+
   // 1. POST PARSER INTENT: Host pastes a post from Zalo/Facebook
   const isPostParseIntent =
     /tuyển|tuyen|vang lai|vãng lai|slot|cần|can tim|giao lưu|giao luu|buổi|buoi|kèo|keo/i.test(userInput) &&
@@ -154,6 +209,23 @@ export function processBuiltInBadmintonAI(
 
   // 4. MATCH SEARCH INTENT (DEFAULT FALLBACK / EXPLICIT SEARCH)
   const searchResults = searchMatchesWithNLP(userInput, allMatches);
+
+  // Nếu người dùng không có ý định tìm kiếm kèo (câu nói không liên quan đến kèo/sân/giờ)
+  if (!searchResults.hasSearchIntent) {
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: `Dạ Bé Cầu chưa hiểu rõ ý bạn lắm nè 🥰\n\nBạn muốn tìm kèo giao lưu ở quận nào (Tân Bình, Tân Phú, Bình Thạnh...), tìm theo khung giờ nào hay cần Bé Cầu bóc tách bài đăng Zalo giúp? Nhắn cụ thể hơn một xíu để Bé Cầu hỗ trợ bạn tốt nhất nha! 🏸✨`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      quickPrompts: [
+        '🏸 Kèo tối nay Tân Bình / Phú Nhuận',
+        '🏸 Kèo 20h - 22h hôm nay',
+        '💰 Kèo dưới 60k',
+        '🎯 Đo trình độ của tôi',
+      ],
+    };
+  }
+
   let reply = '';
 
   if (searchResults.matches.length > 0) {
@@ -204,6 +276,7 @@ export function processBuiltInBadmintonAI(
 }
 
 interface SearchMatchesResult {
+  hasSearchIntent: boolean;
   matches: MatchPost[];
   filterSummary: string;
   requestedHour: number | null;
@@ -288,6 +361,34 @@ function searchMatchesWithNLP(query: string, allMatches: MatchPost[]): SearchMat
   else if (/trung bình|trung binh/i.test(qNorm)) targetLevel = 'Trung Bình';
   else if (/yếu\+|yeu\+/i.test(qNorm)) targetLevel = 'Yếu+';
   else if (/yếu|yeu/i.test(qNorm)) targetLevel = 'Yếu';
+
+  // Kiểm tra xem câu chat có thực sự chứa ý định tìm kiếm kèo hay không
+  const hasSearchKeywords =
+    /kèo|keo|tìm|tim|sân|san|đánh|danh|chơi|choi|slot|vãng lai|vang lai|giao lưu|giao luu|quận|quan|huyện|huyen|giờ|gio|sáng|sang|chiều|chieu|tối|toi|đêm|dem|giá|gia|tiền|tien|trình|trinh|bảng|danh sách|danh sach|hôm nay|hom nay|ngày mai|ngay mai/i.test(
+      qNorm
+    );
+
+  const hasSearchIntent =
+    hasSearchKeywords ||
+    detectedDistricts.length > 0 ||
+    specificHour !== null ||
+    isToday ||
+    isTomorrow ||
+    maxPrice !== null ||
+    targetLevel !== null;
+
+  if (!hasSearchIntent) {
+    return {
+      hasSearchIntent: false,
+      matches: [],
+      filterSummary: '',
+      requestedHour: null,
+      requestedMinute: 0,
+      isTonight: false,
+      closestMatches: [],
+      suggestions: [],
+    };
+  }
 
   // Filter matches strictly
   let results = activeMatches.filter((m) => {
@@ -393,6 +494,7 @@ function searchMatchesWithNLP(query: string, allMatches: MatchPost[]): SearchMat
   if (maxPrice) summaryParts.push(`Giá tối đa: ${maxPrice.toLocaleString('vi-VN')}đ`);
 
   return {
+    hasSearchIntent: true,
     matches: results,
     filterSummary: summaryParts.join(' • '),
     requestedHour: specificHour,
