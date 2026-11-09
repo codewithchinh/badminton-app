@@ -1,6 +1,6 @@
 import React from 'react';
 import type { MatchPost, UserProfile } from '../types';
-import { Clock, MapPin, Zap, CheckCircle, ShieldCheck, Bookmark, QrCode, Share2 } from 'lucide-react';
+import { Clock, MapPin, Zap, CheckCircle, ShieldCheck, Bookmark, QrCode, Share2, Navigation } from 'lucide-react';
 import { getDefaultCourtImage, SVG_BADMINTON_FALLBACK } from '../supabase';
 
 interface MatchCardProps {
@@ -192,6 +192,19 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             <span className="font-bold text-slate-800">{match.courtName}</span>
             <span>•</span>
             <span className="text-slate-600 font-medium">{match.district}</span>
+            {match.googleMapsUrl && (
+              <a
+                href={match.googleMapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="ml-auto text-[11px] text-blue-600 hover:text-blue-700 flex items-center gap-1 font-semibold px-2 py-0.5 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                title="Mở Google Maps chỉ đường"
+              >
+                <Navigation className="w-3 h-3" />
+                <span className="hidden sm:inline">Chỉ đường</span>
+              </a>
+            )}
           </div>
 
           {/* Match Meta: Level + Shuttle + Gender/Deposit */}
@@ -238,8 +251,33 @@ export const MatchCard: React.FC<MatchCardProps> = ({
             ))}
           </div>
 
-          {/* Slot Progress Bar */}
-          <div className="mt-4">
+          {/* Slot Progress Bar & Gender Composition (Bug 9 & Imp 3) */}
+          <div className="mt-4 space-y-1.5">
+            <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-slate-700">
+                  {match.joinedPlayers.length}/{match.totalSlots} slot
+                </span>
+                {(() => {
+                  const maleCount = match.joinedPlayers.filter((p) => p.gender === 'male').length;
+                  const femaleCount = match.joinedPlayers.filter((p) => p.gender === 'female').length;
+                  if (maleCount > 0 || femaleCount > 0) {
+                    return (
+                      <span className="text-slate-500 font-medium">
+                        (Có {maleCount > 0 && <span className="text-blue-600 font-semibold">{maleCount} Nam </span>}
+                        {maleCount > 0 && femaleCount > 0 && '• '}
+                        {femaleCount > 0 && <span className="text-pink-600 font-semibold">{femaleCount} Nữ</span>})
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+              <span className={`font-bold ${isExpired ? 'text-slate-400' : isFull ? 'text-slate-500' : remainingSlots <= 2 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                {isExpired ? 'Đã xong' : isFull ? 'Đã đủ người' : `Còn ${remainingSlots} chỗ`}
+              </span>
+            </div>
+
             <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
               <div
                 className={`h-full transition-all rounded-full ${

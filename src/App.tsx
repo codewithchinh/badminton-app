@@ -982,7 +982,7 @@ export default function App() {
         const matchD = m.district;
         const isMatch =
           matchD === d ||
-          (d === 'Thủ Đức' && (matchD === 'Thủ Đức' || matchD === 'Quận 2')) ||
+          (d === 'Thủ Đức' && (matchD === 'Thủ Đức' || matchD === 'Quận 2' || matchD === 'Quận 9' || matchD.includes('Thủ Đức'))) ||
           (d === 'Quận 2' && (matchD === 'Quận 2' || matchD.includes('Quận 2')));
         if (!isMatch) return false;
       }

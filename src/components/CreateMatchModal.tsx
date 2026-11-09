@@ -4,6 +4,7 @@ import { SKILL_LEVEL_SCORES } from '../types';
 import { X, Plus, Sparkles, Image as ImageIcon, Check, MapPin, Navigation, Upload, Camera, Trash2, QrCode } from 'lucide-react';
 import { getDefaultCourtImage } from '../supabase';
 import { searchCourts, type CourtInfo } from '../data/badmintonCourts';
+import { parseRawPostToDraft } from '../services/aiChatService';
 
 interface CreateMatchModalProps {
   isOpen: boolean;
@@ -155,6 +156,51 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   const [refundPolicy, setRefundPolicy] = useState('Hoàn cọc 100% nếu báo trước 2 tiếng');
   const [isUrgent, setIsUrgent] = useState(false);
   const [announcement, setAnnouncement] = useState('');
+
+  // Quick Zalo import state (Imp 18)
+  const [showZaloPasteBox, setShowZaloPasteBox] = useState(false);
+  const [zaloPostText, setZaloPostText] = useState('');
+  const [isParsingZalo, setIsParsingZalo] = useState(false);
+
+  const handleApplyZaloPost = () => {
+    if (!zaloPostText.trim()) return;
+    setIsParsingZalo(true);
+    try {
+      const draft = parseRawPostToDraft(zaloPostText);
+      if (draft.courtName) {
+        setCourtName(draft.courtName);
+        setSelectedCourtName(draft.courtName);
+      }
+      if (draft.district) setDistrict(draft.district);
+      if (draft.address) setAddress(draft.address);
+      if (draft.googleMapsUrl) setGoogleMapsUrl(draft.googleMapsUrl);
+      if (draft.date) {
+        setDate(draft.date === 'Ngày mai' ? 'Ngày mai' : 'Hôm nay');
+      }
+      if (draft.startTime) setStartTime(draft.startTime);
+      if (draft.endTime) setEndTime(draft.endTime);
+      if (draft.shuttleType) setShuttleType(draft.shuttleType);
+      if (draft.totalSlots) setTotalSlots(draft.totalSlots);
+      if (draft.minLevel) setMinLevel(draft.minLevel);
+      if (draft.maxLevel) setMaxLevel(draft.maxLevel);
+      if (draft.priceMale !== undefined) setPriceMale(draft.priceMale);
+      if (draft.priceFemale !== undefined) setPriceFemale(draft.priceFemale);
+      if (draft.targetGender) setTargetGender(draft.targetGender);
+      if (draft.notes) setNotes(draft.notes);
+      if (draft.bankInfo) {
+        setHasBankInfo(true);
+        if (draft.bankInfo.bankName) setBankName(draft.bankInfo.bankName);
+        if (draft.bankInfo.accountNumber) setAccountNumber(draft.bankInfo.accountNumber);
+        if (draft.bankInfo.accountName) setAccountName(draft.bankInfo.accountName);
+        if (draft.bankInfo.depositAmount) setDepositAmount(draft.bankInfo.depositAmount);
+      }
+      setShowZaloPasteBox(false);
+      setZaloPostText('');
+      alert('✨ Bé Cầu AI đã tự động điền form xong! Bạn hãy rà soát lại thông tin trước khi bấm Đăng nhé.');
+    } finally {
+      setIsParsingZalo(false);
+    }
+  };
 
   // Sync state when opening or when editMatch / cloneMatch / prefilledMatch is passed
   useEffect(() => {
@@ -605,6 +651,58 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1">
+          {/* Quick Zalo Post Importer Banner (Imp 18) */}
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">📝</span>
+                <div>
+                  <h4 className="text-xs font-bold text-emerald-950">Dán bài viết từ Zalo / Facebook</h4>
+                  <p className="text-[11px] text-emerald-700">AI tự động bóc tách tên sân, giờ, giá, số slot trong 1 giây!</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowZaloPasteBox(!showZaloPasteBox)}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
+              >
+                {showZaloPasteBox ? 'Đóng lại' : '⚡ Bóc bài ngay'}
+              </button>
+            </div>
+
+            {showZaloPasteBox && (
+              <div className="mt-3 pt-3 border-t border-emerald-200/80 space-y-2">
+                <textarea
+                  value={zaloPostText}
+                  onChange={(e) => setZaloPostText(e.target.value)}
+                  rows={4}
+                  placeholder="Dán nguyên văn tin tuyển Zalo vào đây, VD:&#10;'Cần tuyển 2 vãng lai tối nay 18-20h sân Viettel Hoàng Hoa Thám, trình TB Yếu, nam 60k nữ 40k, cầu Vinastar...'"
+                  className="w-full p-2.5 rounded-xl border border-emerald-300 bg-white text-xs text-slate-800 focus:outline-emerald-500 font-normal"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setZaloPostText('');
+                      setShowZaloPasteBox(false);
+                    }}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 cursor-pointer"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isParsingZalo || !zaloPostText.trim()}
+                    onClick={handleApplyZaloPost}
+                    className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isParsingZalo ? 'Đang bóc tách...' : '✓ Điền form tự động'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Tiêu đề & Tên sân */}
           <div className="space-y-3">
             <div>
@@ -846,6 +944,33 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                   className="w-full px-2 py-2 rounded-xl border border-slate-200 text-xs focus:outline-emerald-500 bg-white"
                 />
               </div>
+            </div>
+
+            {/* Quick Shift Presets (Ca Vàng phổ biến - Imp 19) */}
+            <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+              <span className="text-[11px] font-semibold text-slate-500">Ca vàng:</span>
+              {[
+                { label: '18h - 20h', start: '18:00', end: '20:00' },
+                { label: '19h - 21h', start: '19:00', end: '21:00' },
+                { label: '20h - 22h', start: '20:00', end: '22:00' },
+                { label: 'Sáng 6h - 8h', start: '06:00', end: '08:00' },
+              ].map((shift) => (
+                <button
+                  key={shift.label}
+                  type="button"
+                  onClick={() => {
+                    setStartTime(shift.start);
+                    setEndTime(shift.end);
+                  }}
+                  className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold border transition-all cursor-pointer active:scale-95 ${
+                    startTime === shift.start && endTime === shift.end
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50'
+                  }`}
+                >
+                  ⚡ {shift.label}
+                </button>
+              ))}
             </div>
 
             {/* Custom Date Input if selected (Bug 6 Fix) */}
