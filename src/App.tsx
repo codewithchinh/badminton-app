@@ -158,7 +158,17 @@ export default function App() {
     'Hóc Môn',
   ];
 
-  const levels = ['Tất cả', 'Hợp trình của tôi', 'Newbie', 'Yếu', 'Trung Bình', 'Khá (Bán chuyên)'];
+  const levels = [
+    'Tất cả',
+    'Hợp trình của tôi',
+    'Newbie',
+    'Yếu',
+    'TB Yếu',
+    'TB-',
+    'Trung Bình',
+    'TB+',
+    'Khá (Bán chuyên)',
+  ];
 
   // Count active filters
   const activeFiltersCount = useMemo(() => {
@@ -638,8 +648,24 @@ export default function App() {
     const alreadyJoined = targetMatch.joinedPlayers.some((p) => p.userId === userToJoin.id);
 
     let updatedPlayers: any[];
+    let updatedWaitlist = targetMatch.waitlist ? [...targetMatch.waitlist] : [];
+
     if (alreadyJoined) {
       updatedPlayers = targetMatch.joinedPlayers.filter((p) => p.userId !== userToJoin.id);
+
+      // Auto promote #1 in waitlist when a slot is freed (Bug 4 Fix)
+      if (updatedWaitlist.length > 0) {
+        const nextInLine = updatedWaitlist.shift()!;
+        updatedPlayers.push({
+          userId: nextInLine.userId,
+          name: nextInLine.name,
+          avatar: nextInLine.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+          level: nextInLine.level,
+          phone: nextInLine.phone,
+          joinedAt: 'Đôn từ hàng chờ',
+          isPaidDeposit: false,
+        });
+      }
     } else {
       if (targetMatch.joinedPlayers.length >= targetMatch.totalSlots) {
         alert('Kèo này vừa đủ người rồi!');
@@ -659,14 +685,21 @@ export default function App() {
       ];
     }
 
-    const updatedMatch = { ...targetMatch, joinedPlayers: updatedPlayers };
+    const updatedMatch = {
+      ...targetMatch,
+      joinedPlayers: updatedPlayers,
+      waitlist: updatedWaitlist,
+    };
     setMatches((prev) => prev.map((m) => (m.id === matchId ? updatedMatch : m)));
     if (selectedMatch?.id === matchId) setSelectedMatch(updatedMatch);
 
     try {
       await supabase
         .from('matches')
-        .update({ joined_players: updatedPlayers })
+        .update({
+          joined_players: updatedPlayers,
+          waitlist: updatedWaitlist,
+        })
         .eq('id', matchId);
     } catch (e) {
       console.error('Failed to sync join to Supabase:', e);
@@ -723,13 +756,33 @@ export default function App() {
     }
   };
 
-  // Host removes a player
+  // Host removes a player with auto-promote waitlist (Bug 4 Fix)
   const handleRemovePlayer = async (matchId: string, playerId: string) => {
     const targetMatch = matches.find((m) => m.id === matchId);
     if (!targetMatch) return;
 
-    const updatedPlayers = targetMatch.joinedPlayers.filter((p) => p.userId !== playerId);
-    const updatedMatch = { ...targetMatch, joinedPlayers: updatedPlayers };
+    let updatedPlayers = targetMatch.joinedPlayers.filter((p) => p.userId !== playerId);
+    let updatedWaitlist = targetMatch.waitlist ? [...targetMatch.waitlist] : [];
+
+    // Auto promote #1 in waitlist when host frees up a slot
+    if (updatedWaitlist.length > 0) {
+      const nextInLine = updatedWaitlist.shift()!;
+      updatedPlayers.push({
+        userId: nextInLine.userId,
+        name: nextInLine.name,
+        avatar: nextInLine.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        level: nextInLine.level,
+        phone: nextInLine.phone,
+        joinedAt: 'Đôn từ hàng chờ',
+        isPaidDeposit: false,
+      });
+    }
+
+    const updatedMatch = {
+      ...targetMatch,
+      joinedPlayers: updatedPlayers,
+      waitlist: updatedWaitlist,
+    };
 
     setMatches((prev) => prev.map((m) => (m.id === matchId ? updatedMatch : m)));
     if (selectedMatch?.id === matchId) setSelectedMatch(updatedMatch);
@@ -737,7 +790,10 @@ export default function App() {
     try {
       await supabase
         .from('matches')
-        .update({ joined_players: updatedPlayers })
+        .update({
+          joined_players: updatedPlayers,
+          waitlist: updatedWaitlist,
+        })
         .eq('id', matchId);
     } catch (e) {
       console.error('Failed to sync remove to Supabase:', e);
@@ -1497,7 +1553,11 @@ export default function App() {
                 >
                   {levels.map((lvl) => (
                     <option key={lvl} value={lvl}>
-                      {lvl === 'Tất cả' ? 'Tất cả trình độ' : lvl === 'Hợp trình của tôi' ? '⭐ Hợp trình của tôi' : `Trình: ${lvl}`}
+                      {lvl === 'Tất cả'
+                        ? 'Tất cả trình độ'
+                        : lvl === 'Hợp trình của tôi'
+                        ? `⭐ Hợp trình của tôi (${currentUser.level || 'TB Yếu'})`
+                        : `Trình: ${lvl}`}
                     </option>
                   ))}
                 </select>
@@ -1912,7 +1972,11 @@ export default function App() {
                   >
                     {levels.map((lvl) => (
                       <option key={lvl} value={lvl}>
-                        {lvl === 'Tất cả' ? 'Tất cả trình độ' : lvl === 'Hợp trình của tôi' ? '⭐ Hợp trình của tôi' : `Trình: ${lvl}`}
+                        {lvl === 'Tất cả'
+                          ? 'Tất cả trình độ'
+                          : lvl === 'Hợp trình của tôi'
+                          ? `⭐ Hợp trình của tôi (${currentUser.level || 'TB Yếu'})`
+                          : `Trình: ${lvl}`}
                       </option>
                     ))}
                   </select>

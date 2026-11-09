@@ -63,6 +63,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const [copiedShare, setCopiedShare] = useState(false);
   const [showLevelInfo, setShowLevelInfo] = useState(false);
   const [isReported, setIsReported] = useState(false);
+  const [hasReportedDeposit, setHasReportedDeposit] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -708,6 +709,43 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Player deposit confirmation action (Bug 3 Fix) */}
+              {isJoined && (
+                <div className="mt-3 pt-3 border-t border-emerald-200/70 flex items-center justify-between flex-wrap gap-2">
+                  <div className="text-xs">
+                    <span className="text-slate-500">Trạng thái cọc của bạn: </span>
+                    {match.joinedPlayers.find((p) => p.userId === currentUser.id)?.isPaidDeposit ? (
+                      <span className="font-extrabold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                        ✓ Host đã xác nhận cọc
+                      </span>
+                    ) : hasReportedDeposit ? (
+                      <span className="font-bold text-teal-800 bg-teal-100 px-2 py-0.5 rounded-md">
+                        ⏳ Đã gửi báo cáo cọc (Chờ Host duyệt)
+                      </span>
+                    ) : (
+                      <span className="font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
+                        Chưa xác nhận cọc
+                      </span>
+                    )}
+                  </div>
+                  {!match.joinedPlayers.find((p) => p.userId === currentUser.id)?.isPaidDeposit && !hasReportedDeposit && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHasReportedDeposit(true);
+                        alert(
+                          `Đã gửi thông báo xác nhận chuyển cọc cho Host ${match.hostName}!\nHost sẽ kiểm tra tài khoản và đánh dấu "Đã cọc" cho bạn nhé.`
+                        );
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs cursor-pointer active:scale-95 transition-all flex items-center gap-1"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Tôi đã chuyển khoản cọc
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -730,13 +768,14 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* Contact buttons (Point 8) */}
+              {/* Contact buttons (Point 8 & Bug 10 Fix: clean phone string) */}
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard.writeText(match.hostPhone);
-                    alert(`Đã sao chép số điện thoại Host: ${match.hostPhone}`);
+                    const phoneToCopy = cleanHostPhone || match.hostPhone;
+                    navigator.clipboard.writeText(phoneToCopy);
+                    alert(`Đã sao chép số điện thoại Host: ${phoneToCopy}`);
                   }}
                   className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-emerald-600 hover:border-emerald-300 shadow-xs cursor-pointer active:scale-95"
                   title="Sao chép số điện thoại Host"

@@ -198,11 +198,11 @@ export const MOCK_MATCHES: MatchPost[] = [
   },
   {
     id: 'match-4',
-    title: 'Tuyển 3 bạn giao lưu cuối tuần chiều Chủ Nhật',
+    title: 'Tuyển 3 bạn giao lưu Bình Thạnh, TB Yếu - TB+',
     courtName: 'Sân Cầu Lông Bình Minh',
     address: 'Bùi Đình Túy, P.12, Bình Thạnh',
     district: 'Bình Thạnh',
-    date: 'Chủ Nhật (09/11)',
+    date: 'Hôm nay',
     startTime: '16:00',
     endTime: '18:00',
     courtNumber: 'Sân 2',
@@ -247,6 +247,6 @@ export const MOCK_MATCHES: MatchPost[] = [
     coverImage: 'https://images.unsplash.com/photo-1622163642998-1ea32b0bbc67?w=800&auto=format&fit=crop&q=80',
     googleMapsUrl: 'https://www.google.com/maps/search/?api=1&query=Sân+Cầu+Lông+Bình+Minh+Bình+Thạnh',
     notes: 'Sân thảm mới đẹp, trần cao không chói mắt, có quạt thông gió. Đánh xong có thể ngồi cà phê giao lưu.',
-    createdAt: 'Hôm qua',
+    createdAt: '1 giờ trước',
   },
 ];

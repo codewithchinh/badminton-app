@@ -73,7 +73,7 @@ export function processBuiltInBadmintonAI(
     /^(ban la ai|bạn là ai|ai day|ai đây|la ai|là ai|lam duoc gi|làm được gì|giup duoc gi|giúp được gì)\b/i.test(inputNorm);
 
   if (isGreeting || isBotIntro) {
-    const greetingText = `Dạ Bé Cầu xin chào bạn nha! 🏸✨\n\nMình là **Bé Cầu AI** - Trợ lý cầu lông siêu dễ thương của TimVangLai.io.vn nè! Hôm nay bạn cần Bé Cầu hỗ trợ gì nè?\n\n• 🔍 **Tìm kèo giao lưu:** Bạn chỉ cần nói khu vực, giờ rảnh hoặc giá (VD: *"Tìm kèo tối nay Tân Bình"*, *"Kèo 20h - 22h dưới 60k"*).\n• 📝 **Soạn bài đăng Host:** Quăng nguyên văn bài viết từ Zalo/Facebook vào đây, mình tự động điền form tạo kèo trong 1 giây!\n• 🎯 **Đo trình độ:** Tự kiểm tra xem bạn thuộc trình độ nào theo thang 10 bậc Việt Nam.\n• 💡 **Hỏi luật & kinh nghiệm:** Hỏi về luật giao cầu 1.15m, cách chọn vợt, cước, chọn cầu...\n\nBạn cứ thoải mái nhắn cho Bé Cầu nha! 🥰`;
+    const greetingText = `Dạ Bé Cầu xin chào bạn nha! 🏸✨\n\nMình là **Bé Cầu AI** - Trợ lý cầu lông siêu dễ thương của TimVangLai.io.vn nè! Hôm nay bạn cần Bé Cầu hỗ trợ gì nè?\n\n• 🔍 **Tìm kèo giao lưu:** Bạn chỉ cần nói khu vực hoặc giờ rảnh (VD: *"Tìm kèo tối nay Tân Bình"*, *"Kèo 20h - 22h Tân Bình"*).\n• 📝 **Soạn bài đăng Host:** Quăng nguyên văn bài viết từ Zalo/Facebook vào đây, mình tự động điền form tạo kèo trong 1 giây!\n• 🎯 **Đo trình độ:** Tự kiểm tra xem bạn thuộc trình độ nào theo thang 10 bậc Việt Nam.\n• 💡 **Hỏi luật & kinh nghiệm:** Hỏi về luật giao cầu 1.15m, cách chọn vợt, cước, chọn cầu...\n\nBạn cứ thoải mái nhắn cho Bé Cầu nha! 🥰`;
 
     return {
       id: Date.now().toString(),
@@ -181,7 +181,7 @@ export function processBuiltInBadmintonAI(
       quickPrompts: [
         `🏸 Kèo trình ${evalResult.level} hôm nay`,
         '📝 Dán bài Zalo để AI soạn',
-        '💰 Kèo dưới 60k Tân Bình',
+        '🏸 Kèo Tân Bình tối nay',
       ],
     };
   }
@@ -220,7 +220,7 @@ export function processBuiltInBadmintonAI(
       quickPrompts: [
         '🏸 Kèo tối nay Tân Bình / Phú Nhuận',
         '🏸 Kèo 20h - 22h hôm nay',
-        '💰 Kèo dưới 60k',
+        '⚡ Kèo còn slot trống',
         '🎯 Đo trình độ của tôi',
       ],
     };
@@ -269,7 +269,7 @@ export function processBuiltInBadmintonAI(
     quickPrompts: [
       '🏸 Kèo tối nay 19h - 21h',
       '🏸 Kèo 20h - 22h',
-      '💰 Kèo dưới 60k Tân Bình',
+      '⚡ Kèo hợp trình của tôi',
       '📝 Dán bài Zalo soạn kèo nhanh',
     ],
   };

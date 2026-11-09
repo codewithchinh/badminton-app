@@ -21,6 +21,13 @@ export const MatchCard: React.FC<MatchCardProps> = ({
   onToggleBookmark,
 }) => {
   const isJoined = match.joinedPlayers.some((p) => p.userId === currentUser.id);
+  const isHost =
+    Boolean(currentUser.id && currentUser.id !== 'guest' && match.hostId === currentUser.id) ||
+    Boolean(
+      currentUser.phone &&
+        match.hostPhone &&
+        currentUser.phone.replace(/\D/g, '') === match.hostPhone.replace(/\D/g, '')
+    );
   const remainingSlots = match.totalSlots - match.joinedPlayers.length;
   const isFull = remainingSlots <= 0;
 
@@ -280,7 +287,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
               )}
             </div>
 
-            {/* Quick Action Button (Bug 3 Fix) */}
+            {/* Quick Action Button (Bug 3 & Bug 7 Fix) */}
             {isExpired ? (
               <button
                 type="button"
@@ -288,6 +295,19 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                 className="px-3 py-2 rounded-xl bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed"
               >
                 Đã xong
+              </button>
+            ) : isHost ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(match);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-teal-50 text-teal-800 border border-teal-300 hover:bg-teal-100 text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 transition-all"
+                title="Kèo do bạn làm Host - Bấm để quản lý"
+              >
+                <ShieldCheck className="w-4 h-4 text-teal-600" />
+                Quản lý
               </button>
             ) : match.isLocked ? (
               <button

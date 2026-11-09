@@ -37,13 +37,13 @@ interface AIChatModalProps {
 const INITIAL_WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   sender: 'assistant',
-  text: `🏸 **Hế lô bạn! Mình là Bé Cầu AI đây!**\n\nMình là trợ lý cầu lông phong trào siêu thân thiện của bạn. Cần gì cứ nói với mình nha:\n\n1. 🔍 **Tìm kèo thông minh:** *"Tìm kèo Tân Bình tối nay 19h-21h trình TB Yếu dưới 70k"*\n2. 📝 **Trợ lý soạn bài cho Host:** Cứ dán đoạn tin nhắn nháp từ Facebook/Zalo vào đây, mình tự bóc tách và điền thẳng vào Form Tạo Kèo cho bạn!\n3. 🎯 **Thẩm định trình độ:** Kể cho mình nghe bạn chơi bao lâu, đánh phông, đập, thủ thế nào... mình chấm điểm theo thang 10 bậc chuẩn Việt Nam liền!\n\nBạn muốn tìm kèo hay cần mình phụ việc gì trước nè?`,
+  text: `🏸 **Hế lô bạn! Mình là Bé Cầu AI đây!**\n\nMình là trợ lý cầu lông phong trào siêu thân thiện của bạn. Cần gì cứ nói với mình nha:\n\n1. 🔍 **Tìm kèo thông minh:** *"Tìm kèo Tân Bình tối nay 19h-21h trình TB Yếu"*\n2. 📝 **Trợ lý soạn bài cho Host:** Cứ dán đoạn tin nhắn nháp từ Facebook/Zalo vào đây, mình tự bóc tách và điền thẳng vào Form Tạo Kèo cho bạn!\n3. 🎯 **Thẩm định trình độ:** Kể cho mình nghe bạn chơi bao lâu, đánh phông, đập, thủ thế nào... mình chấm điểm theo thang 10 bậc chuẩn Việt Nam liền!\n\nBạn muốn tìm kèo hay cần mình phụ việc gì trước nè?`,
   timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
   quickPrompts: [
     '🏸 Tìm kèo tối nay gần tui',
     '📝 Dán bài Zalo tui soạn cho',
     '🎯 Test xem tui trình gì nha',
-    '💰 Kèo dưới 60k Tân Bình',
+    '⚡ Kèo hợp trình của tôi',
   ],
 };
 
