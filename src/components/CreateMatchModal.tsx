@@ -285,19 +285,10 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   }, [isOpen, editMatch, cloneMatch]);
 
   const upcomingDatesList = React.useMemo(() => {
-    const list = [
+    return [
       { label: 'Hôm nay', value: 'Hôm nay' },
       { label: 'Ngày mai', value: 'Ngày mai' },
     ];
-    const dayNames = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-    const now = new Date();
-    for (let i = 2; i < 8; i++) {
-      const d = new Date(now);
-      d.setDate(now.getDate() + i);
-      const dayStr = `${dayNames[d.getDay()]} (${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')})`;
-      list.push({ label: dayStr, value: dayStr });
-    }
-    return list;
   }, []);
 
   useEffect(() => {

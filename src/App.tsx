@@ -925,6 +925,11 @@ export default function App() {
     setSelectedMatch(newMatch);
     setIsDetailOpen(true);
 
+    // Tự động chuyển bộ lọc quận về quận của bài đăng để Host thấy bài ngay ngoài Feed (BUG-05 Fix)
+    if (selectedDistrict !== 'Tất cả' && selectedDistrict !== newMatch.district) {
+      handleSelectDistrict(newMatch.district);
+    }
+
     try {
       await supabase.from('matches').insert(toDbRow(newMatch));
     } catch (e) {
@@ -932,7 +937,7 @@ export default function App() {
     }
   };
 
-  // Helper kiểm tra kèo đã kết thúc hay chưa (Bug 10 Fix)
+  // Helper kiểm tra kèo đã kết thúc hay chưa (Bug 10 Fix & Date rollover fix)
   const isMatchExpired = (m: MatchPost) => {
     try {
       const now = new Date();
@@ -942,8 +947,9 @@ export default function App() {
       } else if (m.date.includes('/')) {
         const parts = m.date.match(/(\d{1,2})\/(\d{1,2})/);
         if (parts) {
-          targetDate.setDate(parseInt(parts[1], 10));
-          targetDate.setMonth(parseInt(parts[2], 10) - 1);
+          const day = parseInt(parts[1], 10);
+          const month = parseInt(parts[2], 10) - 1;
+          targetDate.setFullYear(now.getFullYear(), month, day);
         }
       }
       const [endHour, endMin] = m.endTime.split(':').map((n) => parseInt(n, 10));
@@ -958,8 +964,13 @@ export default function App() {
   const filteredMatches = useMemo(() => {
     const list = matches.filter((m) => {
       if (activeTab === 'my-matches') {
+        const cleanUserPhone = currentUser.phone ? currentUser.phone.replace(/\D/g, '') : '';
+        const cleanHostPhone = m.hostPhone ? m.hostPhone.replace(/\D/g, '') : '';
+        const isHostOfMatch =
+          Boolean(currentUser.id && currentUser.id !== 'guest' && m.hostId === currentUser.id) ||
+          Boolean(cleanUserPhone && cleanHostPhone && cleanUserPhone === cleanHostPhone);
         const isJoined = m.joinedPlayers.some((p) => p.userId === currentUser.id);
-        if (!isJoined) return false;
+        if (!isJoined && !isHostOfMatch) return false;
       }
 
       if (activeTab === 'bookmarks') {

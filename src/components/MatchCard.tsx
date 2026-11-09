@@ -326,10 +326,13 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (navigator.vibrate) try { navigator.vibrate(20); } catch {}
-                  onJoin(match.id);
+                  if (window.confirm(`Bạn có chắc chắn muốn hủy giữ slot tại ${match.courtName}?\nHành động này sẽ nhường slot cho người khác.`)) {
+                    if (navigator.vibrate) try { navigator.vibrate(20); } catch {}
+                    onJoin(match.id);
+                  }
                 }}
                 className="px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold flex items-center gap-1.5 border border-emerald-300 cursor-pointer active:scale-95"
+                title="Bấm để hủy giữ slot"
               >
                 <CheckCircle className="w-4 h-4 text-emerald-600" />
                 Đã giữ slot

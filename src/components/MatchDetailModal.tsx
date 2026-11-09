@@ -81,7 +81,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   if (!isOpen || !match) return null;
 
   const isJoined = match.joinedPlayers.some((p) => p.userId === currentUser.id);
-  const isHost = match.hostId === currentUser.id || (match.hostPhone && match.hostPhone === currentUser.phone);
+  const cleanHostPhone = match.hostPhone ? match.hostPhone.replace(/[^0-9]/g, '') : '';
+  const cleanUserPhone = currentUser.phone ? currentUser.phone.replace(/[^0-9]/g, '') : '';
+  const isHost =
+    Boolean(currentUser.id && currentUser.id !== 'guest' && match.hostId === currentUser.id) ||
+    Boolean(cleanHostPhone && cleanUserPhone && cleanHostPhone === cleanUserPhone);
   const remainingSlots = match.totalSlots - match.joinedPlayers.length;
   const isFull = remainingSlots <= 0;
 
@@ -89,7 +93,25 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     return amount.toLocaleString('vi-VN') + ' đ';
   };
 
-  const cleanHostPhone = match.hostPhone ? match.hostPhone.replace(/[^0-9]/g, '') : '';
+  const copyTextSafely = async (text: string) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   // Tính trạng thái thời gian đếm ngược & hết hạn
   const getCountdownLabel = () => {
@@ -101,8 +123,9 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
       } else if (match.date.includes('/')) {
         const parts = match.date.match(/(\d{1,2})\/(\d{1,2})/);
         if (parts) {
-          targetDate.setDate(parseInt(parts[1], 10));
-          targetDate.setMonth(parseInt(parts[2], 10) - 1);
+          const day = parseInt(parts[1], 10);
+          const month = parseInt(parts[2], 10) - 1;
+          targetDate.setFullYear(now.getFullYear(), month, day);
         }
       }
       const [startHour, startMin] = match.startTime.split(':').map((n) => parseInt(n, 10));
@@ -799,9 +822,9 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     const phoneToCopy = cleanHostPhone || match.hostPhone;
-                    navigator.clipboard.writeText(phoneToCopy);
+                    await copyTextSafely(phoneToCopy);
                     alert(`Đã sao chép số điện thoại Host: ${phoneToCopy}`);
                   }}
                   className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-emerald-600 hover:border-emerald-300 shadow-xs cursor-pointer active:scale-95"
@@ -995,7 +1018,15 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
         {/* Bottom CTA / Action Bar */}
         <div className="p-4 bg-white border-t border-slate-100">
-          {isJoined ? (
+          {isHost ? (
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-teal-50 border border-teal-200">
+              <div className="flex items-center gap-2 text-teal-800 font-bold text-xs">
+                <ShieldCheck className="w-4 h-4 text-teal-600" />
+                <span>🛡️ Bạn là Host tổ chức trận này</span>
+              </div>
+              <span className="text-[11px] text-teal-700 font-medium hidden sm:inline">Quản lý duyệt slot ở danh sách người chơi phía trên</span>
+            </div>
+          ) : isJoined ? (
             <div className="flex items-center gap-3">
               <div className="flex-1 text-xs text-emerald-700 font-semibold flex items-center gap-1.5">
                 <CheckCircle className="w-4 h-4" />
