@@ -112,6 +112,209 @@ export function processBuiltInBadmintonAI(
     };
   }
 
+  // ===== ĐA DẠNG KỊCH BẢN ĐỜI SỐNG & TÂM LÝ LÔNG THỦ (CHỐNG MÁY MÓC / KHÔNG PHÙ HỢP) =====
+
+  // 1. KỊCH BẢN: Tâm trạng, Buồn bã, Chán nản, Mệt mỏi, Stress
+  const isEmotionalSadStress =
+    /\b(buồn|buon|chán|chan|cô đơn|co don|áp lực|ap luc|stress|mệt|met|tuyệt vọng|tuyet vong|thất tình|that tinh|nản|nan|chán đời|chan doi|bế tắc|be tac)\b/i.test(
+      userInput
+    ) || /(buồn quá|buon qua|mệt quá|met qua|chán quá|chan qua|stress quá|nản lòng)/i.test(userInput);
+
+  if (isEmotionalSadStress) {
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: `Dạ Bé Cầu nghe nè! 🥺 Thương bạn quá đi à, ôm bạn một cái thật chặt nha 🤗.\n\nĐời người ai chẳng có những ngày mệt mỏi, áp lực hay hụt hẫng đúng không nè? Nhưng mà mỗi lần Bé Cầu thấy trong lòng nặng trĩu, bí quyết xả stress đã nhất là **xách vợt ra sân, đập vài quả smash nổ long trời lở đất!** 🏸💥 Tiếng cầu nổ giòn tan kèm vài giọt mồ hôi rơi xuống là bao nhiêu muộn phiền tự nhiên tan biến hết trơn á!\n\nNếu bạn thấy cần một nơi để giải tỏa, Bé Cầu dắt bạn đi kiếm một sân giao lưu toàn các bạn dễ thương, cười nói rôm rả nha. Còn nếu hôm nay mệt quá thì cứ nghỉ ngơi, uống ly trà ấm rồi ngủ một giấc thật ngon. Ngày mai trời lại sáng mà! ✨`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      quickPrompts: [
+        '🏸 Tìm kèo giao lưu xả stress',
+        '🎯 Đo trình độ của tôi',
+        '🥰 Cảm ơn Bé Cầu nha',
+        '💡 Mẹo smash cầu giải tỏa',
+      ],
+    };
+  }
+
+  // 2. KỊCH BẢN: Vợ / Người yêu cấm, Bồ dỗi, Nỗi khổ lông thủ
+  const isSpousePartnerRestricted =
+    /(vo cam|vợ cấm|vo khong cho|vợ không cho|nguoi yeu cam|người yêu cấm|bo doi|bồ dỗi|so vo|sợ vợ|noc nha|nóc nhà|tron vo|trốn vợ|ban gai khong cho|bạn gái cấm)/i.test(
+      inputNorm
+    );
+
+  if (isSpousePartnerRestricted) {
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: `Haha, đây đúng là "kiếp nạn thứ 82" kinh điển của anh em lông thủ rồi! 🤣 "Nóc nhà" mà đã nghiêm mặt thì đố ai dám trái lệnh đúng không nè?\n\nBé Cầu mách nước cho bạn 3 chiêu "xin visa" đi đánh cầu cực kỳ hiệu nghiệm nè:\n\n1. **Chiêu 1 (Cùng vui):** Rủ vợ/người yêu đi theo làm "Cổ động viên độc quyền", mua sẵn ly trà sữa full topping hoặc ly nước ép mát rượi đặt ngay ghế ngồi. Vừa được đánh cầu vừa ghi điểm tâm lý!\n2. **Chiêu 2 (Lập công chuộc tội):** Trước khi đi 1 tiếng, chủ động rửa chén, quét nhà, phơi đồ sạch bong rồi nhỏ nhẹ: *"Anh đi thể dục 1 tiếng rèn luyện sức khỏe để về phục vụ em nha!"* 😇\n3. **Chiêu 3 (Chiến thuật du kích):** Nay ở nhà ngoan ngoãn dỗ dành, mai xin đi ca sáng sớm 6h - 8h lúc nóc nhà còn đang ngủ say! 🌅\n\nChúc bạn sớm xin được "visa" thông hành ra sân nha! 🏸✨`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      quickPrompts: [
+        '🏸 Tìm kèo sáng sớm (mai đi)',
+        '🏸 Kèo cuối tuần giao lưu',
+        '🥰 Cảm ơn Bé Cầu nha',
+      ],
+    };
+  }
+
+  // 3. KỊCH BẢN: Thua trận, Bị "Bán hành", Đánh dở, Mất tự tin
+  const isLosingOrBadMatch =
+    /(bi hanh|bị hành|ban hanh|bán hành|an hanh|ăn hành|danh do|đánh dở|danh te|đánh tệ|thua sach|thua sạch|thua dam|thua đậm|hut cau|hụt cầu|mat tu tin|mất tự tin|danh chan|đánh chán)/i.test(
+      inputNorm
+    );
+
+  if (isLosingOrBadMatch) {
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: `Ui chao, chuyện bình thường ở huyện luôn bạn ơi! 🏸😅 Có ngày tay dẻo như bún, có ngày cầm vợt mà ngỡ như cầm... chảo chiên trứng vậy á!\n\nBạn đừng nản nha, châm ngôn của lông thủ tụi mình là gì: **"Thắng không kiêu, bại mua cầu đánh tiếp!"** 💪 Kể cả các huyền thoại như Lee Chong Wei hay Axelsen cũng từng bị "ăn hành" cả trăm lần trước khi bước lên đỉnh vinh quang mà.\n\n💡 **Mẹo của Bé Cầu để lấy lại tự tin nè:**\n• Xem lại nhịp thở và bộ chân (di chuyển sớm 0.5 giây là đón cầu ngọt ngay).\n• Chọn kèo đúng trình độ (TB Yếu / Newbie) để kéo lại cảm giác cầu trước khi thách đấu các kèo rát hơn.\n• Làm ly trà đá vỉa hè với đồng đội, rút kinh nghiệm là trận sau lại smash ầm ầm liền!`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      quickPrompts: [
+        '🎯 Đo lại trình độ của tôi',
+        '🏸 Kèo TB Yếu giao lưu vui vẻ',
+        '💡 Cách cải thiện lực cổ tay',
+      ],
+    };
+  }
+
+  // 4. KỊCH BẢN: Chấn thương, Đau nhức, Lật sơ mi, Trẹo chân
+  const isInjuryOrPain =
+    /(lat so mi|lật sơ mi|dau tay|đau tay|dau chan|đau chân|treo chan|trẹo chân|chuot rut|chuột rút|chan thuong|chấn thương|dau khop|đau khớp|dau co tay|đau cổ tay|dau lung|đau lưng|bong gan|bong gân)/i.test(
+      inputNorm
+    );
+
+  if (isInjuryOrPain) {
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: `⚠️ **DỪNG ĐÁNH NGAY VÀ KHÔNG ĐƯỢC RÁNG NHA BẠN ƠI!**\n\nTrong cầu lông, cổ chân và cổ tay cực kỳ nhạy cảm. Sân cầu thì ngày nào cũng còn đó, nhưng khớp gân của mình thì chỉ có một thôi!\n\n🚑 **Xử trí cấp cứu chuẩn R.I.C.E ngay tại chỗ nè:**\n1. **Rest (Nghỉ ngơi):** Ngồi ngay xuống ghế, tuyệt đối không cố chạy nhảy thêm.\n2. **Ice (Chườm lạnh):** Xin ngay túi đá ở quầy nước sân cầu chườm 15 - 20 phút. *(LƯU Ý QUAN TRỌNG: Tuyệt đối KHÔNG xoa dầu nóng, Salonpas nóng hay rượu thuốc vào vết thương mới vì sẽ làm giãn mạch, sưng phù nề nặng hơn!)*\n3. **Compression (Băng ép):** Dùng băng thun quấn nhẹ quanh cổ chân/tay để cố định.\n4. **Elevation (Kê cao):** Kê chân/tay cao hơn tim để máu huyết hồi lưu, giảm tụ máu.\n\nNếu thấy đau nhói hoặc sưng to bất thường, nhớ ghé phòng khám kiểm tra nhé. Chúc bạn mau bình phục để sớm trở lại sân nha! 🏸🤍`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      quickPrompts: [
+        '💡 Cách phòng tránh lật sơ mi',
+        '🏸 Sân có thảm chuẩn PVC êm chân',
+        '🥰 Cảm ơn Bé Cầu nha',
+      ],
+    };
+  }
+
+  // 5. KỊCH BẢN: Thời tiết cản trở (Trời mưa to, Ngập nước, Nắng nóng)
+  const isBadWeather =
+    /(troi mua|trời mưa|mua to|mưa to|ngap nuoc|ngập nước|mua gio|mưa gió|ngap duong|ngập đường|troi nong|trời nóng|nong chay mo|nóng chảy mỡ)/i.test(
+      inputNorm
+    );
+
+  if (isBadWeather) {
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: `Trời ơi, "cơn ác mộng số 1" của anh em lông thủ: vừa xỏ giày vác bao vợt ra cửa thì trời đổ mưa rào! 🌧️😅\n\n🛵 **Bé Cầu dặn dò bạn đi đường xíu nè:**\n• Bọc kỹ bao vợt bằng túi nilon / áo mưa để tránh nước mưa ngấm làm ẩm cước và gỉ gen vợt nha.\n• Chạy xe cẩn thận kẻo đường trơn trượt.\n• **Mẹo:** Nên gọi điện thoại trước cho Host hoặc chủ sân xem sân có bị dột mái tôn hoặc ẩm nền không trước khi lội nước tới nha bạn ơi!\n\nNếu mưa to quá không đi được thì cứ ở nhà nghỉ ngơi giữ sức, mai mình lại chiến tiếp! 🏸✨`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      quickPrompts: [
+        '🏸 Tìm kèo ngày mai',
+        '💡 Cách bảo quản vợt mùa mưa',
+        '🏸 Sân trong nhà thoáng mát',
+      ],
+    };
+  }
+
+  // 6. KỊCH BẢN: Ăn uống sau giờ đánh, Đói bụng, Uống bia, Nước mía
+  const isPostMatchFoodDrinks =
+    /(doi bung|đói bụng|doi qua|đói quá|danh xong an gi|đánh xong ăn gì|uong bia|uống bia|nuoc mia|nước mía|tang 2|tăng 2|nhau khong|nhậu không|an gi ngon|ăn gì ngon)/i.test(
+      inputNorm
+    );
+
+  if (isPostMatchFoodDrinks) {
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: `Haha, đánh xong 2 tiếng mồ hôi ướt đẫm mà làm một "tăng 2" thì đúng là đỉnh nóc kịch trần luôn! 😋🍲\n\n🍻 **Gợi ý thực đơn "tăng 2" chuẩn bài cho lông thủ Sài Gòn:**\n• **Hệ Healthy giải nhiệt:** 1 ly nước mía sầu riêng khổng lồ hoặc 1 trái dừa tươi mát lạnh bù điện giải tức thì!\n• **Hệ Ấm bụng:** 1 tô cháo lòng nóng hổi, tô bún bò tái nạm hoặc hủ tiếu gõ ngay cổng sân.\n• **Hệ Giao lưu chém gió:** Kéo nhau ra quán ốc, lẩu gà lá é hoặc làm 1 - 2 lon bia nâng ly chúc mừng những pha đập cầu đẹp mắt!\n\nBạn đánh xong chưa? Đi nạp năng lượng ngay thôi kẻo đói lả người nha! 🏸🥢`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      quickPrompts: [
+        '🏸 Tìm kèo tối nay gần tôi',
+        '💡 Uống gì phục hồi cơ tốt nhất',
+        '🏸 Kèo khuya 20h - 22h',
+      ],
+    };
+  }
+
+  // 7. KỊCH BẢN: Khen ngợi, Thả thính, Trêu ghẹo Bé Cầu
+  const isFlirtingCompliments =
+    /(de thuong|dễ thương|dang yeu|đáng yêu|yeu be cau|yêu bé cầu|lam nguoi yeu|làm người yêu|cuoi anh|cưới anh|cuoi em|cưới em|an com chua|ăn cơm chưa|may tuoi|mấy tuổi|xinh the|xinh thế|thong minh|thông minh|gioi qua|giỏi quá)/i.test(
+      inputNorm
+    );
+
+  if (isFlirtingCompliments) {
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: `Ui chao, bạn khen làm Bé Cầu ngại ngùng muốn "đỏ hết cả lông cầu" rồi nè! 🥰🙈\n\nBé Cầu là AI nên không ăn cơm, chỉ "ăn điện thoại" và sống bằng niềm vui mỗi khi kết nối được một trận cầu nảy lửa cho các bạn thôi á! Nhưng mà trái tim Bé Cầu thì đã trót trao trọn cho những đường cầu uy lực và tiếng hò reo trên sân rồi hihi.\n\nCảm ơn sự dễ thương của bạn nha! Hôm nay bạn đã tìm được sân giao lưu ưng ý chưa nè? Để Bé Cầu tìm cho bạn một kèo thật xịn xò nha! 🏸✨`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      quickPrompts: [
+        '🏸 Tìm kèo tối nay gần tôi',
+        '🎯 Đo trình độ của tôi',
+        '📝 Dán bài Zalo để AI soạn',
+      ],
+    };
+  }
+
+  // 8. KỊCH BẢN: Rủ Bé Cầu đi đánh cầu cùng
+  const isInviteBotToPlay =
+    /(be cau di danh|bé cầu đi đánh|di danh khong|đi đánh không|giao luu voi be cau|giao lưu với bé cầu|solo voi be cau|solo với bé cầu|danh cau voi toi|đánh cầu với tôi)/i.test(
+      inputNorm
+    );
+
+  if (isInviteBotToPlay) {
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: `Úi chùi ui, rủ Bé Cầu ra sân là bạn phải coi chừng nha! 🤖🏸 Bé Cầu di chuyển với tốc độ... cáp quang gigabit và smash chuẩn từng milimet luôn á haha!\n\nĐùa chứ Bé Cầu là trợ lý ảo nên chỉ có thể "bao sân" trên không gian số để hỗ trợ các lông thủ tìm slot và quản lý bài đăng thôi nè. Còn trên sân thật, Bé Cầu xin phép làm "cổ động viên nhiệt thành nhất" cổ vũ cho bạn từ xa nha! 🎉\n\nĐể Bé Cầu kết nối cho bạn những đối thủ bằng xương bằng thịt thật xịn xò để so vợt nha? Bạn thích đánh ở khu vực nào?`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      quickPrompts: [
+        '🏸 Tìm kèo Tân Bình tối nay',
+        '🏸 Tìm kèo Tân Phú hôm nay',
+        '🎯 Đo trình độ của tôi',
+      ],
+    };
+  }
+
+  // 9. KỊCH BẢN: Ngôn từ tiêu cực, Chửi thề, Bực dọc
+  const isToxicProfanity =
+    /(dm|dcm|cl|vcl|vl|dcmm|đụ|địt|cho chet|chó chết|ngu the|ngu thế|dien à|điên à|cut di|cút đi|mat day|mất dạy)/i.test(
+      inputNorm
+    );
+
+  if (isToxicProfanity) {
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: `Dạ Bé Cầu xin lắng nghe nè! 🏸🤍\n\nCó thể hôm nay bạn đang gặp chuyện gì đó bực bội, không vừa ý hoặc gặp phải ca đánh cầu không như mong muốn đúng không nè? Nhưng mình cùng giữ cho không gian giao lưu thể thao thật vui vẻ, văn minh và lịch sự nha bạn!\n\nNếu hệ thống hay Bé Cầu có điểm nào chưa tốt làm bạn phật ý, bạn cứ nhắn thẳng để Bé Cầu học hỏi và sửa đổi nha. Chúc bạn sớm lấy lại tinh thần thoải mái nhé! ✨`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      quickPrompts: [
+        '🏸 Tìm kèo giao lưu văn minh',
+        '💡 Hướng dẫn sử dụng app',
+        '🎯 Đo trình độ của tôi',
+      ],
+    };
+  }
+
+  // 10. KỊCH BẢN: Chủ đề ngoài lề (Toán, Lập trình, Crypto, Game, Thể thao khác)
+  const isUnrelatedTechOrCryptoOrGeneral =
+    /(viet code|viết code|python|javascript|react|html|css|giai toan|giải toán|toan hoc|toán học|bitcoin|crypto|tien ao|tiền ảo|chung khoan|chứng khoán|chinh tri|chính trị|game|lien quan|liên quân|lien minh|liên minh|fifa|bong da|bóng đá|ronaldo|messi)/i.test(
+      inputNorm
+    );
+
+  if (isUnrelatedTechOrCryptoOrGeneral) {
+    return {
+      id: Date.now().toString(),
+      sender: 'assistant',
+      text: `Ui da, câu hỏi này nằm tít tắp ở ngoài... đường biên sân cầu rồi bạn ơi! 🏸😅\n\nBé Cầu là trợ lý "chuyên trị" bộ môn cầu lông, sân bãi và kết nối vãng lai thôi nè. Hỏi Bé Cầu về cách chọn vợt 3U/4U, căng cước 10.5kg, luật giao cầu 1.15m hay tìm sân trống thì Bé Cầu bao sân từ A đến Z! Chứ mấy món chuyên sâu ngoài lề này là Bé Cầu xin phép "bỏ nhỏ hụt tay" liền á haha.\n\nMình quay lại với niềm đam mê cầu lông nha! Hôm nay bạn có muốn làm vài set cầu giải tỏa căng thẳng không nè?`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      quickPrompts: [
+        '🏸 Tìm kèo chiều tối nay',
+        '💡 Tư vấn chọn vợt & cước',
+        '🎯 Đo trình độ của tôi',
+      ],
+    };
+  }
+
   // 1. POST PARSER INTENT: Host pastes a post from Zalo/Facebook
   const isPostParseIntent =
     /tuyển|tuyen|vang lai|vãng lai|slot|cần|can tim|giao lưu|giao luu|buổi|buoi|kèo|keo/i.test(userInput) &&
@@ -210,19 +413,39 @@ export function processBuiltInBadmintonAI(
   // 4. MATCH SEARCH INTENT (DEFAULT FALLBACK / EXPLICIT SEARCH)
   const searchResults = searchMatchesWithNLP(userInput, allMatches);
 
-  // Nếu người dùng không có ý định tìm kiếm kèo (câu nói không liên quan đến kèo/sân/giờ)
+  // Nếu người dùng không có ý định tìm kiếm kèo (câu nói ngoài luồng, không khớp từ khóa tìm kiếm)
   if (!searchResults.hasSearchIntent) {
+    const fallbackTemplates = [
+      {
+        text: `Dạ Bé Cầu chưa "bắt được đường cầu" này của bạn nè 🏸😅\n\nBạn muốn tìm kèo giao lưu ở quận nào (Tân Bình, Tân Phú, Bình Thạnh...), tìm theo khung giờ nào hay cần Bé Cầu bóc bài Zalo giúp? Nhắn cụ thể hơn một xíu để Bé Cầu phục vụ bạn chu đáo nhất nha! ✨`,
+        quickPrompts: ['🏸 Kèo tối nay Tân Bình', '🏸 Kèo 20h - 22h hôm nay', '🎯 Đo trình độ của tôi', '📝 Dán bài Zalo soạn kèo'],
+      },
+      {
+        text: `Úi, pha này nằm ngoài sân rồi bạn ơi! 🏸👀\n\nBé Cầu là trợ lý chuyên trị tìm kèo vãng lai, đo trình độ và tư vấn luật/vợt cầu lông nè! Bạn đang muốn tìm sân đánh hay cần Bé Cầu hỗ trợ gì nè?`,
+        quickPrompts: ['🏸 Tìm kèo gần tôi nhất', '💡 Tư vấn cách chọn vợt', '⚡ Kèo hợp trình của tôi', '📝 Bóc tách bài Zalo'],
+      },
+      {
+        text: `Bé Cầu vừa xoay người phông cầu một cái mà vẫn chưa hiểu rõ ý bạn lắm nè! 🙈🏸\n\nBạn nhắn chi tiết hơn một chút xíu (ví dụ: *"Tìm kèo tối nay Tân Bình"*, *"Kèo 18h dưới 70k"*) để Bé Cầu quét toàn bộ hệ thống giúp bạn nha!`,
+        quickPrompts: ['🏸 Kèo tối nay 18h - 20h', '🏸 Kèo Tân Phú hôm nay', '🎯 Đánh giá trình độ', '💡 Luật giao cầu 1.15m'],
+      },
+      {
+        text: `Nghe câu này mà Bé Cầu ngơ ngác như Newbie lần đầu thấy các cao thủ smash 300km/h vậy á! 🤣🏸\n\nHôm nay bạn có dự định ra sân làm vài set cầu giải tỏa căng thẳng không? Để Bé Cầu dắt bạn đi kiếm kèo ngon nha!`,
+        quickPrompts: ['🏸 Tìm kèo tối nay', '🏸 Kèo giao lưu Newbie/TB', '📝 Soạn bài đăng Host', '🥰 Cảm ơn Bé Cầu nha'],
+      },
+      {
+        text: `Trọng tài Bé Cầu xin phép hội ý 5 giây nha! 🏸🧐\n\nBạn đang cần tìm sân cầu lông ở khu vực nào, hay muốn hỏi kinh nghiệm thi đấu nè? Cứ nói với Bé Cầu nha!`,
+        quickPrompts: ['🏸 Kèo Quận 10 / Tân Bình', '⚡ Kèo còn slot trống', '💡 Mẹo cải thiện cổ tay', '🎯 Đo trình độ'],
+      },
+    ];
+
+    const chosen = fallbackTemplates[Math.abs((userInput.length * 7) + (userInput.charCodeAt(0) || 0)) % fallbackTemplates.length];
+
     return {
       id: Date.now().toString(),
       sender: 'assistant',
-      text: `Dạ Bé Cầu chưa hiểu rõ ý bạn lắm nè 🥰\n\nBạn muốn tìm kèo giao lưu ở quận nào (Tân Bình, Tân Phú, Bình Thạnh...), tìm theo khung giờ nào hay cần Bé Cầu bóc tách bài đăng Zalo giúp? Nhắn cụ thể hơn một xíu để Bé Cầu hỗ trợ bạn tốt nhất nha! 🏸✨`,
+      text: chosen.text,
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-      quickPrompts: [
-        '🏸 Kèo tối nay Tân Bình / Phú Nhuận',
-        '🏸 Kèo 20h - 22h hôm nay',
-        '⚡ Kèo còn slot trống',
-        '🎯 Đo trình độ của tôi',
-      ],
+      quickPrompts: chosen.quickPrompts,
     };
   }
 
@@ -337,12 +560,22 @@ function searchMatchesWithNLP(query: string, allMatches: MatchPost[]): SearchMat
     }
   }
 
-  // Detect Time Range / Day
-  const isTonight = /tối|toi|dem|đêm/i.test(qNorm) || (specificHour !== null && specificHour >= 18);
-  const isMorning = /sáng|sang|morning/i.test(qNorm) || (specificHour !== null && specificHour < 12);
-  const isAfternoon = /chiều|chieu|afternoon/i.test(qNorm) || (specificHour !== null && specificHour >= 12 && specificHour < 18);
-  const isToday = /hôm nay|hom nay|today/i.test(qNorm);
-  const isTomorrow = /ngày mai|ngay mai|mai|tomorrow/i.test(qNorm);
+  // Detect Time Range / Day (Chống lỗi nhận nhầm từ đại từ "tôi" thành "buổi tối")
+  const isTonight =
+    /\btối\b/i.test(query) ||
+    /\b(buoi toi|ca toi|toi nay|toi mai|gio toi|ban dem|buoi dem)\b/i.test(qNorm) ||
+    /\b(đêm|dem)\b/i.test(query) ||
+    (specificHour !== null && specificHour >= 18);
+  const isMorning =
+    /\bsáng\b/i.test(query) ||
+    /\b(buoi sang|ca sang|sang mai|sang nay|morning)\b/i.test(qNorm) ||
+    (specificHour !== null && specificHour < 12);
+  const isAfternoon =
+    /\bchiều\b/i.test(query) ||
+    /\b(buoi chieu|ca chieu|chieu nay|chieu mai|afternoon)\b/i.test(qNorm) ||
+    (specificHour !== null && specificHour >= 12 && specificHour < 18);
+  const isToday = /\b(hôm nay|hom nay|today)\b/i.test(qNorm);
+  const isTomorrow = /\b(ngày mai|ngay mai|mai|tomorrow)\b/i.test(qNorm);
 
   // Detect Max Price
   let maxPrice: number | null = null;
@@ -362,11 +595,13 @@ function searchMatchesWithNLP(query: string, allMatches: MatchPost[]): SearchMat
   else if (/yếu\+|yeu\+/i.test(qNorm)) targetLevel = 'Yếu+';
   else if (/yếu|yeu/i.test(qNorm)) targetLevel = 'Yếu';
 
-  // Kiểm tra xem câu chat có thực sự chứa ý định tìm kiếm kèo hay không
+  // Kiểm tra xem câu chat có thực sự chứa ý định tìm kiếm kèo hay không (Không để "tôi" kích hoạt tìm kiếm)
   const hasSearchKeywords =
-    /kèo|keo|tìm|tim|sân|san|đánh|danh|chơi|choi|slot|vãng lai|vang lai|giao lưu|giao luu|quận|quan|huyện|huyen|giờ|gio|sáng|sang|chiều|chieu|tối|toi|đêm|dem|giá|gia|tiền|tien|trình|trinh|bảng|danh sách|danh sach|hôm nay|hom nay|ngày mai|ngay mai/i.test(
+    /\b(kèo|keo|tìm|tim|sân|san|đánh|danh|chơi|choi|slot|vãng lai|vang lai|giao lưu|giao luu|quận|quan|huyện|huyen|giờ|gio|sáng|sang|chiều|chieu|đêm|dem|giá|gia|tiền|tien|trình|trinh|bảng|danh sách|danh sach)\b/i.test(
       qNorm
-    );
+    ) ||
+    /\b(tối|hôm nay|ngày mai)\b/i.test(query) ||
+    /\b(toi nay|toi mai|ca toi|buoi toi|ca sang|ca chieu|hom nay|ngay mai)\b/i.test(qNorm);
 
   const hasSearchIntent =
     hasSearchKeywords ||
