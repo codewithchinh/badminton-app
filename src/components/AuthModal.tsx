@@ -165,6 +165,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         return;
       }
 
+      let rememberedPhone = '';
+      try {
+        const stored = localStorage.getItem('timvanglai_user_profile');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.phone) rememberedPhone = parsed.phone;
+        }
+      } catch {}
+
       try {
         setLoading(true);
         const { data, error } = await supabase.auth.signUp({
@@ -173,11 +182,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           options: {
             data: {
               full_name: cleanName,
+              ...(rememberedPhone ? { phone: rememberedPhone } : {}),
             },
           },
         });
 
         if (error) throw error;
+
+        // Cập nhật tên hiển thị vào local profile (BUG-10 Fix)
+        try {
+          const stored = localStorage.getItem('timvanglai_user_profile');
+          const current = stored ? JSON.parse(stored) : {};
+          localStorage.setItem(
+            'timvanglai_user_profile',
+            JSON.stringify({ ...current, name: cleanName, ...(rememberedPhone ? { phone: rememberedPhone } : {}) })
+          );
+        } catch {}
 
         // If email confirmation is disabled on Supabase, session is created immediately
         if (data.session) {

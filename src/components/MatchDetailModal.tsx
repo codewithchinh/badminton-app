@@ -219,9 +219,22 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
       } catch {}
     }
 
-    navigator.clipboard.writeText(text);
-    setCopiedShare(true);
-    setTimeout(() => setCopiedShare(false), 2500);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2500);
+    } catch {
+      alert('Không thể tự động sao chép. Bạn có thể chụp màn hình bài đăng nhé!');
+    }
   };
 
   const handleReportMatch = () => {
@@ -286,6 +299,20 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
   const handleRegisterWaitlist = () => {
     if (!onJoinWaitlist) return;
+
+    // Chống đăng ký trùng lặp nhiều lần (BUG-07 Fix)
+    const alreadyInWaitlist = match.waitlist?.some(
+      (w) => w.userId === currentUser.id || (Boolean(currentUser.phone) && w.phone === currentUser.phone)
+    );
+    if (alreadyInWaitlist) {
+      const myPos =
+        match.waitlist!.findIndex(
+          (w) => w.userId === currentUser.id || (Boolean(currentUser.phone) && w.phone === currentUser.phone)
+        ) + 1;
+      alert(`Bạn đã ở vị trí số #${myPos} trong hàng chờ rồi nha! Host sẽ gọi bạn ngay khi có người rút lui.`);
+      return;
+    }
+
     const phone = window.prompt('Nhập số điện thoại / Zalo để Host liên hệ khi có người hủy slot:', currentUser.phone || '');
     if (phone && phone.trim()) {
       onJoinWaitlist(match.id, phone.trim());

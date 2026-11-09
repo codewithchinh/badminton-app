@@ -373,7 +373,14 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       setSelectedCourtName('');
     }
     if (val.trim().length >= 1) {
-      const results = searchCourts(val);
+      const rawResults = searchCourts(val);
+      const seen = new Set<string>();
+      const results = rawResults.filter((c) => {
+        const key = `${c.name.trim().toLowerCase()}_${c.district}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       setSuggestions(results);
       setShowSuggestions(true);
     } else {
@@ -413,6 +420,18 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       return;
     }
 
+    // Validation thời lượng ca đánh tối thiểu 60 phút (BUG-01 Fix)
+    const [startH, startM] = startTime.split(':').map((n) => parseInt(n, 10));
+    const [endH, endM] = endTime.split(':').map((n) => parseInt(n, 10));
+    let diffMinutes = endH * 60 + endM - (startH * 60 + startM);
+    if (diffMinutes < 0) {
+      diffMinutes += 24 * 60; // Ca đánh đêm xuyên 0h
+    }
+    if (diffMinutes < 60) {
+      alert('Thời lượng ca đánh tối thiểu phải từ 1 tiếng (60 phút) trở lên!');
+      return;
+    }
+
     if ((SKILL_LEVEL_SCORES[minLevel] ?? 0) > (SKILL_LEVEL_SCORES[maxLevel] ?? 9)) {
       alert('Trình độ tối thiểu không được cao hơn trình độ tối đa!');
       return;
@@ -426,6 +445,16 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       }
       const [y, m, d] = customDateValue.split('-');
       const dayObj = new Date(Number(y), Number(m) - 1, Number(d));
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      dayObj.setHours(0, 0, 0, 0);
+
+      // Chặn tạo kèo ngày quá khứ (BUG-03 Fix)
+      if (dayObj.getTime() < today.getTime()) {
+        alert('Không thể tạo kèo cho ngày trong quá khứ! Vui lòng chọn ngày hôm nay hoặc ngày tới.');
+        return;
+      }
+
       const dayNames = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
       finalDate = `${dayNames[dayObj.getDay()]} (${d}/${m})`;
     }
