@@ -8,9 +8,7 @@ import {
   Clock,
   ChevronRight,
   ArrowRight,
-  Settings,
   Trash2,
-  Key,
   Flame,
   Award,
 } from 'lucide-react';
@@ -18,8 +16,6 @@ import { BadmintonMascotBot } from './BadmintonMascotBot';
 import {
   type ChatMessage,
   sendChatMessageToAI,
-  getStoredGeminiKey,
-  setStoredGeminiKey,
 } from '../services/aiChatService';
 import { getDefaultCourtImage } from '../supabase';
 
@@ -65,9 +61,6 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
   const streamTimerRef = useRef<any>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState(() => getStoredGeminiKey());
-  const [keySavedToast, setKeySavedToast] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -235,15 +228,6 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
     }
   };
 
-  const handleSaveApiKey = () => {
-    setStoredGeminiKey(apiKeyInput);
-    setKeySavedToast(true);
-    setTimeout(() => {
-      setKeySavedToast(false);
-      setShowSettings(false);
-    }, 1200);
-  };
-
   const handleApplyDraft = (draft: Partial<MatchPost>) => {
     onPrefillCreateMatch(draft);
     onClose();
@@ -281,13 +265,6 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
 
           <div className="flex items-center gap-1 sm:gap-1.5">
             <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-2 rounded-xl text-emerald-100 hover:text-white hover:bg-white/10 transition-colors"
-              title="Cài đặt API Key"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-            <button
               onClick={handleClearHistory}
               className="p-2 rounded-xl text-emerald-100 hover:text-white hover:bg-white/10 transition-colors"
               title="Xoá lịch sử chat"
@@ -303,36 +280,6 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
             </button>
           </div>
         </div>
-
-        {/* API Settings Panel (Expandable) */}
-        {showSettings && (
-          <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 shrink-0 animate-in slide-in-from-top duration-200 text-xs">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                <Key className="w-3.5 h-3.5 text-emerald-600" /> Cài đặt Gemini AI API Key
-              </span>
-              <span className="text-[10px] text-slate-500">Mặc định: Hybrid Built-in NLP</span>
-            </div>
-            <p className="text-slate-600 mb-2 leading-relaxed text-[11px]">
-              Hệ thống đã tích hợp sẵn <strong>Engine NLP Cầu Lông chuyên sâu chạy trực tiếp</strong> không tốn phí. Nếu muốn trải nghiệm mô hình ngôn ngữ lớn Google Gemini 1.5/2.0 Flash của riêng bạn, hãy dán API Key vào đây:
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="password"
-                value={apiKeyInput}
-                onChange={(e) => setApiKeyInput(e.target.value)}
-                placeholder="AIzaSy... (Để trống để dùng Engine NLP miễn phí)"
-                className="flex-1 px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs focus:outline-emerald-500"
-              />
-              <button
-                onClick={handleSaveApiKey}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition-colors shrink-0"
-              >
-                {keySavedToast ? 'Đã lưu ✓' : 'Lưu Key'}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Main Content Area */}
         {!isLoggedIn ? (

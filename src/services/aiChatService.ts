@@ -15,14 +15,18 @@ export interface ChatMessage {
   quickPrompts?: string[];
 }
 
-// Storage key for user-provided Gemini API key
+// Storage key for system-configured or local testing Gemini API key
 const GEMINI_API_KEY_STORAGE = 'timvanglai_gemini_api_key';
 
 export function getStoredGeminiKey(): string {
+  const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (envKey && typeof envKey === 'string' && envKey.trim()) {
+    return envKey.trim();
+  }
   try {
-    return localStorage.getItem(GEMINI_API_KEY_STORAGE) || import.meta.env.VITE_GEMINI_API_KEY || '';
+    return localStorage.getItem(GEMINI_API_KEY_STORAGE) || '';
   } catch {
-    return import.meta.env.VITE_GEMINI_API_KEY || '';
+    return '';
   }
 }
 
@@ -819,27 +823,39 @@ QUY TẮC KHUNG GIỜ BẮT BUỘC (CHÍNH XÁC TUYỆT ĐỐI):
 3. Nếu người chơi hỏi về trình độ: Đánh giá theo thang 10 bậc Việt Nam (Newbie, Yếu, Yếu+, TB Yếu, TB-, Trung Bình, TB+, TB+++, Khá, Tốt) và tư vấn nâng cao.
 4. Trả lời bằng tiếng Việt tự nhiên, định dạng Markdown đẹp mắt.`;
 
-    const contents = [
-      {
-        role: 'user',
+    // Build clean alternating conversation turns for Gemini
+    const conversationTurns: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
+    const recentHistory = history.filter((m) => m.text && m.text.trim().length > 0).slice(-6);
+
+    for (const msg of recentHistory) {
+      const role: 'user' | 'model' = msg.sender === 'user' ? 'user' : 'model';
+      if (conversationTurns.length > 0 && conversationTurns[conversationTurns.length - 1].role === role) {
+        conversationTurns[conversationTurns.length - 1].parts[0].text += `\n${msg.text}`;
+      } else {
+        conversationTurns.push({ role, parts: [{ text: msg.text }] });
+      }
+    }
+
+    // Append current user input
+    if (conversationTurns.length > 0 && conversationTurns[conversationTurns.length - 1].role === 'user') {
+      conversationTurns[conversationTurns.length - 1].parts[0].text += `\n${userInput}`;
+    } else {
+      conversationTurns.push({ role: 'user', parts: [{ text: userInput }] });
+    }
+
+    const requestBody = {
+      system_instruction: {
         parts: [{ text: systemPrompt }],
       },
-      ...history.slice(-4).map((msg) => ({
-        role: msg.sender === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.text }],
-      })),
-      {
-        role: 'user',
-        parts: [{ text: userInput }],
-      },
-    ];
+      contents: conversationTurns,
+    };
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents }),
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
       }
     );
